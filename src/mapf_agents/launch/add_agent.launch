@@ -1,0 +1,7 @@
+<launch>
+	<arg name="agent_type" default="user"/>
+
+	<node pkg="mapf_agents" type="agent.py" name="agent" output="screen">
+		<param name="agent_type" type="string" value="$(arg agent_type)"/>
+	</node>
+</launch>

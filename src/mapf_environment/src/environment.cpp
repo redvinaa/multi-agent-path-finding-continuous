@@ -48,7 +48,7 @@ std::string type2str(int type) {
 }
 
 Environment::Environment(ros::NodeHandle _nh):
-		nh(_nh), gravity(0, 0), world(gravity), it(_nh), rendering_on(true), physics_on(true) {
+		nh(_nh), gravity(0, 0), world(gravity), it(_nh), rendering_on(true), physics_on(true), count_call_agents(0) {
 	// read parameters
 	ros::NodeHandle nh_private("~");
 	if (!nh_private.getParam("map_path", map_path)) throw std::runtime_error("Missing parameter: map_path");
@@ -66,11 +66,19 @@ Environment::Environment(ros::NodeHandle _nh):
 	nh_private.param<bool>("draw_laser",                 draw_laser,               false);
 
 	// dynamic reconfigure
-	ddr.registerVariable<double>("laser_max_angle", &laser_max_angle, "Maximum (half) angle of the raycast sensor", 0, M_PI/2);
-	ddr.registerVariable<double>("laser_max_dist",  &laser_max_dist,  "Maximum distance of the raycast sensor", 0.1, 20);
-	ddr.registerVariable<bool> ("physics_on",       &physics_on,      "Start or stop physics", false, true);
-	ddr.registerVariable<bool> ("rendering_on",     &rendering_on,    "Start or stop rendering", false, true);
-	ddr.registerVariable<bool> ("draw_laser",       &draw_laser,      "Visualize raycast sensor", false, true);
+	ddr.registerVariable<double>("physics_frequency", physics_frequency,
+		boost::bind(&Environment::ddr_physics_frequency, this, _1), "Frequency of physics update", 1, 1000);
+	ddr.registerVariable<double>("render_frequency", render_frequency,
+		boost::bind(&Environment::ddr_render_frequency, this, _1), "Frequency of rendering", 1, 60);
+	ddr.registerVariable<double>("agent_service_frequency", agent_service_frequency,
+		boost::bind(&Environment::ddr_agent_service_frequency, this, _1), "Frequency of calling agent services", 0.01, 1000);
+
+	ddr.registerVariable<double>("physics_step_size", &physics_step_size, "Step size of physics update", 0.001, 1);
+	ddr.registerVariable<double>("laser_max_angle",   &laser_max_angle,   "Maximum (half) angle of the raycast sensor", 0, M_PI/2);
+	ddr.registerVariable<double>("laser_max_dist",    &laser_max_dist,    "Maximum distance of the raycast sensor", 0.1, 20);
+	ddr.registerVariable<bool>("physics_on",          &physics_on,        "Start or stop physics", false, true);
+	ddr.registerVariable<bool>("rendering_on",        &rendering_on,      "Start or stop rendering", false, true);
+	ddr.registerVariable<bool>("draw_laser",          &draw_laser,        "Visualize raycast sensor", false, true);
 	ddr.publishServicesTopics();
 
 	// initialize ros communication
@@ -78,20 +86,20 @@ Environment::Environment(ros::NodeHandle _nh):
 	add_agent_service = nh.advertiseService("add_agent", &Environment::add_agent, this);
 
 	// timers
-	physics_timer       = nh.createTimer(ros::Duration(1/physics_frequency),       &Environment::step_physics, this);
-	render_timer        = nh.createTimer(ros::Duration(1/render_frequency),        &Environment::render,       this);
-	agent_service_timer = nh.createTimer(ros::Duration(1/agent_service_frequency), &Environment::call_agent,   this);
+	physics_timer           = nh.createTimer(ros::Duration(1/physics_frequency),       &Environment::step_physics,               this);
+	render_timer            = nh.createTimer(ros::Duration(1/render_frequency),        &Environment::render,                     this);
+	agent_service_timer     = nh.createTimer(ros::Duration(1/agent_service_frequency), &Environment::call_agent,                 this);
+	count_call_agents_timer = nh.createTimer(ros::Duration(5),                         &Environment::count_call_agents_callback, this);
 
 	srand(time(NULL));
 	robot_radius = robot_diam/2;
 	init_map(); // load map before physics
 	init_physics();
-	ROS_INFO("Multi-agent path finding environment initialized, add agents and start physics");
+	ROS_INFO("Multi-agent path finding environment initialized");
 }
 
 void Environment::init_map(void) {
 	map_image_raw = cv::imread(map_path, cv::IMREAD_GRAYSCALE);
-	ROS_INFO_STREAM("Map type: " << type2str(map_image_raw.type()));
 	if (map_image_raw.empty()) throw std::runtime_error("Map image not found: " + map_path);
 
 	map_width = map_image_raw.size().width;
@@ -122,16 +130,13 @@ int Environment::generate_empty_index() {
 		float x_pos = col + 0.5; // center of cell
 		float y_pos = map_height - row - 0.5;
 		b2Vec2 index_position(x_pos, y_pos);
-		ROS_INFO_STREAM("Index position: x=" << x_pos << ", y=" << y_pos);
 
 		// check if cell has a wall
-		ROS_INFO_STREAM("Map value there: " << (int)map_image_raw.at<unsigned char>(row, col));
 		if ((int)map_image_raw.at<unsigned char>(row, col) < 255/2) continue;
 
 		// check if any agent is near
 		bool somethings_near = false;
 		for (int agent=0; agent<agent_bodies.size(); agent++) {
-			ROS_INFO_STREAM("Checking for agent " << agent);
 			if ((agent_bodies[agent]->GetPosition() - index_position).Length() < robot_diam) {
 				somethings_near = true;
 				break;
@@ -279,18 +284,21 @@ void Environment::action_callback(const geometry_msgs::TwistConstPtr& msg, const
 }
 
 void Environment::call_agent(const ros::TimerEvent&) {
+	// test if call_agent is the set frequency
+	count_call_agents++;
+
 	for (int agent=0; agent<call_agent_services.size(); agent++) {
 		ros::ServiceClient client = call_agent_services[agent];
 		client.waitForExistence();
 
 		mapf_environment::CallAgent data;
 		// TODO fill with observation
-		if (!client.call(data)) {
+		if (!client.call(data))
 			throw std::runtime_error("Communication to agent "+std::to_string(agent)+" failed");
-		}
+		agent_lin_vel[agent] = data.response.action.linear.x;
+		agent_ang_vel[agent] = data.response.action.angular.z;
 	}
 }
-
 
 void Environment::step_physics(const ros::TimerEvent&) {
 	if (physics_on == false) return;
@@ -311,8 +319,6 @@ void Environment::step_physics(const ros::TimerEvent&) {
 			float col = index - row * map_image_raw.size().width; // integer division
 			float x_pos = col + 0.5;
 			float y_pos = map_height - row - 0.5;
-			ROS_INFO_STREAM("Index position: x=" << x_pos << ", y=" << y_pos);
-
 			goal_positions[i] = b2Vec2(x_pos, y_pos);
 		}
 
@@ -341,6 +347,8 @@ void Environment::step_physics(const ros::TimerEvent&) {
 
 void Environment::render(const ros::TimerEvent&) {
 	if (!rendering_on) return;
+
+	b2ContactListener contact;
 
 	rendered_image = color.white();
 
@@ -416,4 +424,26 @@ void Environment::render(const ros::TimerEvent&) {
 	cv_ptr->encoding = "bgr8";
 	cv_ptr->image = rendered_image;
 	render_publisher.publish(cv_ptr->toImageMsg());
+}
+
+void Environment::count_call_agents_callback(const ros::TimerEvent&) {
+	// average frequency over 5 s
+	float avg_freq = count_call_agents / 5.;
+	count_call_agents = 0;
+	if (1.1 * avg_freq < agent_service_frequency) // delay is over 10%
+		ROS_WARN("call_agent frequency is more than 10%% slower (%.2f instead of %.2f) than specified, lower physics settings", avg_freq, agent_service_frequency);
+}
+
+// ddr callbacks
+void Environment::ddr_physics_frequency(double frequency) {
+	physics_frequency = frequency;
+	physics_timer     = nh.createTimer(ros::Duration(1/physics_frequency), &Environment::step_physics, this);
+}
+void Environment::ddr_render_frequency(double frequency) {
+	render_frequency = frequency;
+	render_timer     = nh.createTimer(ros::Duration(1/render_frequency), &Environment::render, this);
+}
+void Environment::ddr_agent_service_frequency(double frequency) {
+	agent_service_frequency = frequency;
+	agent_service_timer = nh.createTimer(ros::Duration(1/agent_service_frequency), &Environment::call_agent,   this);
 }

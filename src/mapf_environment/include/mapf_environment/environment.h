@@ -25,7 +25,7 @@ class Environment {
 		std::vector<ros::Subscriber> action_subscribers; // debug only
 		std::vector<ros::ServiceClient> call_agent_services;
 		ros::ServiceServer add_agent_service;
-		ros::Timer physics_timer, render_timer, agent_service_timer;
+		ros::Timer physics_timer, render_timer, agent_service_timer, count_call_agents_timer;
 		image_transport::ImageTransport it;
 		image_transport::Publisher render_publisher;
 		ddynamic_reconfigure::DDynamicReconfigure ddr;
@@ -50,7 +50,7 @@ class Environment {
 		double render_frequency, block_size, scale_factor, laser_max_angle, laser_max_dist,
 			robot_diam, robot_radius, map_width, map_height, agent_service_frequency;
 		std::string map_path;
-		int render_height, laser_nrays;
+		int render_height, laser_nrays, count_call_agents;
 		cv::Mat map_image_raw, map_image, rendered_image;
 		cv::viz::Color color;
 
@@ -63,6 +63,12 @@ class Environment {
 		void render(const ros::TimerEvent&);
 		void action_callback(const geometry_msgs::TwistConstPtr& msg, const int agent_index);
 		void call_agent(const ros::TimerEvent&);
+		void count_call_agents_callback(const ros::TimerEvent&);
+
+		// ddr callbacks
+		void ddr_physics_frequency(double frequency);
+		void ddr_render_frequency(double frequency);
+		void ddr_agent_service_frequency(double frequency);
 
 	public:
 		Environment(ros::NodeHandle _nh);
