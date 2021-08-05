@@ -63,9 +63,10 @@
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>tf</exec_depend>
-	<depend>cv_bridge</depend>
-	<depend>image_transport</depend>
-	<depend>ddynamic_reconfigure</depend>
+  <depend>cv_bridge</depend>
+  <depend>image_transport</depend>
+  <depend>ddynamic_reconfigure</depend>
+  <test_depend>rosunit</test_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

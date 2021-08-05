@@ -1,17 +1,17 @@
 <launch>
-	<arg name="map"                     default="test_4x4.jpg"/>
-	<arg name="physics_frequency"       default="100.0"/>
-	<arg name="physics_step_size"       default="0.01"/>
-	<arg name="render_frequency"        default="30.0"/>
-	<arg name="laser_max_angle"         default="0.79"/>
-	<arg name="laser_max_dist"          default="10.0"/>
-	<arg name="robot_diam"              default="0.8"/>
-	<arg name="agent_service_frequency" default="10"/>
-	<arg name="laser_nrays"             default="10"/>
-	<arg name="velocity_iterations"     default="6"/>
-	<arg name="position_iterations"     default="2"/>
-	<arg name="render_height"           default="700"/>
-	<arg name="draw_laser"              default="false"/>
+	<arg name="map"                            default="test_4x4.jpg"/>
+	<arg name="physics_frequency"              default="100.0"/>
+	<arg name="physics_step_size"              default="0.01"/>
+	<arg name="render_frequency"               default="30.0"/>
+	<arg name="laser_max_angle"                default="0.79"/>
+	<arg name="laser_max_dist"                 default="10.0"/>
+	<arg name="robot_diam"                     default="0.8"/>
+	<arg name="publish_observations_frequency" default="10"/>
+	<arg name="laser_nrays"                    default="10"/>
+	<arg name="velocity_iterations"            default="6"/>
+	<arg name="position_iterations"            default="2"/>
+	<arg name="render_height"                  default="700"/>
+	<arg name="draw_laser"                     default="false"/>
 
 	<node pkg="mapf_environment" type="environment" name="environment" output="screen">
 		<param name="map_path"                type="string" value="$(find mapf_environment)/maps/$(arg map)"/>
@@ -21,7 +21,7 @@
 		<param name="laser_max_angle"         type="double" value="$(arg laser_max_angle)"/>
 		<param name="laser_max_dist"          type="double" value="$(arg laser_max_dist)"/>
 		<param name="robot_diam"              type="double" value="$(arg robot_diam)"/>
-		<param name="agent_service_frequency" type="double" value="$(arg agent_service_frequency)"/>
+		<param name="publish_observations_frequency" type="double" value="$(arg publish_observations_frequency)"/>
 		<param name="laser_nrays"             type="int"    value="$(arg laser_nrays)"/>
 		<param name="velocity_iterations"     type="int"    value="$(arg velocity_iterations)"/>
 		<param name="position_iterations"     type="int"    value="$(arg velocity_iterations)"/>
