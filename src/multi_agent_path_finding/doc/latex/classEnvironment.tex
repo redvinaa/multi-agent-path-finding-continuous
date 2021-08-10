@@ -1,0 +1,352 @@
+\hypertarget{classEnvironment}{}\doxysection{Environment Class Reference}
+\label{classEnvironment}\index{Environment@{Environment}}
+
+
+\mbox{\hyperlink{classEnvironment}{Environment}} for multi-\/agent path finding simulation.  
+
+
+
+
+{\ttfamily \#include $<$environment\+\_\+core.\+h$>$}
+
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{classEnvironment_a626c47eb76814e2160b26008081ff290}{Environment}} (std\+::string \+\_\+map\+\_\+path, float \+\_\+physics\+\_\+step\+\_\+size=0.\+01, float \+\_\+laser\+\_\+max\+\_\+angle=45.$\ast$M\+\_\+\+PI/180., float \+\_\+laser\+\_\+max\+\_\+dist=10., float \+\_\+robot\+\_\+diam=0.\+8, int \+\_\+velocity\+\_\+iterations=6, int \+\_\+position\+\_\+iterations=2, int \+\_\+render\+\_\+height=700, int \+\_\+laser\+\_\+nrays=10, bool \+\_\+draw\+\_\+laser=false, float \+\_\+goal\+\_\+reaching\+\_\+reward=0., float \+\_\+collision\+\_\+reward=-\/1., float \+\_\+step\+\_\+reward=-\/1.)
+\begin{DoxyCompactList}\small\item\em Sets the default parameters, and calls \mbox{\hyperlink{classEnvironment_ae4ce7d9e59dbc44f87015461453f49b3}{init\+\_\+map()}} and \mbox{\hyperlink{classEnvironment_a9e00bd32644e4c37d731f04bcd0940f4}{init\+\_\+physics()}} \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classEnvironment_ae4ce7d9e59dbc44f87015461453f49b3}{init\+\_\+map}} (void)
+\begin{DoxyCompactList}\small\item\em Load map. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classEnvironment_a9e00bd32644e4c37d731f04bcd0940f4}{init\+\_\+physics}} (void)
+\begin{DoxyCompactList}\small\item\em Create box2d physics world, create boundaries and add obstacles based on the map image. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{classEnvironment_a0a4fbabaf68d5553299592c569ed5c18}{generate\+\_\+empty\+\_\+index}} (void)
+\begin{DoxyCompactList}\small\item\em Randomly find an empty place on the map (no obstacles and no other agents nearby) \end{DoxyCompactList}\item 
+\mbox{\Hypertarget{classEnvironment_a9bf96c5e6b817be1595b24992cde8e82}\label{classEnvironment_a9bf96c5e6b817be1595b24992cde8e82}} 
+void \mbox{\hyperlink{classEnvironment_a9bf96c5e6b817be1595b24992cde8e82}{reset}} ()
+\begin{DoxyCompactList}\small\item\em Set done=false, and generate new goals for all the current agents. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{classEnvironment_a1a39f789194778e73ad0e1ef2433f7ac}{add\+\_\+agent}} ()
+\begin{DoxyCompactList}\small\item\em Create an agent with physics, random starting and goal positions. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classEnvironment_a4779c221230d53f9ac91c3b631df5ce2}{remove\+\_\+agent}} (int agent\+\_\+index)
+\begin{DoxyCompactList}\small\item\em Remove the given agent and its goal from the simulation. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classEnvironment_ac22c7d2a724fb28e4b71d6723475e6e7}{step\+\_\+physics}} ()
+\begin{DoxyCompactList}\small\item\em Remove the given agent and its goal from the simulation. \end{DoxyCompactList}\item 
+cv\+::\+Mat \mbox{\hyperlink{classEnvironment_a0e098b4273d7dc8f9bf70e7b578a0e3d}{render}} ()
+\begin{DoxyCompactList}\small\item\em Render the obstacles, agents, goals, optionally the raycasts, and show collisions as well. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classEnvironment_a84bea5f6023a135b869f338e53191e32}{process\+\_\+action}} (int agent\+\_\+index, geometry\+\_\+msgs\+::\+Twist action)
+\begin{DoxyCompactList}\small\item\em Save the linear and angular velocity of the given agent. \end{DoxyCompactList}\item 
+mapf\+\_\+environment\+::\+Observation \mbox{\hyperlink{classEnvironment_ab8e805ad3a976724265eaff69400e32a}{get\+\_\+observation}} (int agent\+\_\+index)
+\begin{DoxyCompactList}\small\item\em Calculate the observations for the given agent. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classEnvironment_ac125317ce75c5a14214a5ea309316df7}\label{classEnvironment_ac125317ce75c5a14214a5ea309316df7}} 
+b2\+Vec2 {\bfseries gravity}
+\item 
+\mbox{\Hypertarget{classEnvironment_a80460b42c58dfd40e863f1c5522c5cb4}\label{classEnvironment_a80460b42c58dfd40e863f1c5522c5cb4}} 
+b2\+World {\bfseries world}
+\item 
+\mbox{\Hypertarget{classEnvironment_a6bc6615c6ac6b5e89565aa78d8bce74c}\label{classEnvironment_a6bc6615c6ac6b5e89565aa78d8bce74c}} 
+std\+::vector$<$ b2\+Body $\ast$ $>$ {\bfseries agent\+\_\+bodies}
+\item 
+\mbox{\Hypertarget{classEnvironment_a11fc589391361dd973467e019a204f3a}\label{classEnvironment_a11fc589391361dd973467e019a204f3a}} 
+std\+::vector$<$ b2\+Body $\ast$ $>$ {\bfseries obstacle\+\_\+bodies}
+\item 
+\mbox{\Hypertarget{classEnvironment_adfa1b7b91f70d1db85c139427498635d}\label{classEnvironment_adfa1b7b91f70d1db85c139427498635d}} 
+std\+::vector$<$ b2\+Vec2 $>$ {\bfseries goal\+\_\+positions}
+\item 
+\mbox{\Hypertarget{classEnvironment_a0c65136b6ce58a82d496d9f33c48ab95}\label{classEnvironment_a0c65136b6ce58a82d496d9f33c48ab95}} 
+double {\bfseries physics\+\_\+step\+\_\+size}
+\item 
+\mbox{\Hypertarget{classEnvironment_a6d6e91e72bc57dfff48ce04d504db1ed}\label{classEnvironment_a6d6e91e72bc57dfff48ce04d504db1ed}} 
+int32 {\bfseries velocity\+\_\+iterations}
+\item 
+\mbox{\Hypertarget{classEnvironment_a42f49229837cb99a0dd833bd85a44c62}\label{classEnvironment_a42f49229837cb99a0dd833bd85a44c62}} 
+int32 {\bfseries position\+\_\+iterations}
+\item 
+\mbox{\Hypertarget{classEnvironment_ad028052447206bf2130c965ca159ee08}\label{classEnvironment_ad028052447206bf2130c965ca159ee08}} 
+std\+::vector$<$ cv\+::\+Scalar $>$ {\bfseries agent\+\_\+colors}
+\item 
+\mbox{\Hypertarget{classEnvironment_a9d3b82f0fb46da16671ddb8f0385b74f}\label{classEnvironment_a9d3b82f0fb46da16671ddb8f0385b74f}} 
+std\+::vector$<$ float $>$ {\bfseries agent\+\_\+lin\+\_\+vel}
+\item 
+\mbox{\Hypertarget{classEnvironment_a08ac24b8d82ceb74b27d0435aaf51d84}\label{classEnvironment_a08ac24b8d82ceb74b27d0435aaf51d84}} 
+std\+::vector$<$ float $>$ {\bfseries agent\+\_\+ang\+\_\+vel}
+\item 
+\mbox{\Hypertarget{classEnvironment_a0b9d35172b0afac612f65b68049bfa9f}\label{classEnvironment_a0b9d35172b0afac612f65b68049bfa9f}} 
+std\+::vector$<$ bool $>$ {\bfseries collisions}
+\item 
+\mbox{\Hypertarget{classEnvironment_a2964dc178b985d9c3f10fe8bcf8e6653}\label{classEnvironment_a2964dc178b985d9c3f10fe8bcf8e6653}} 
+std\+::vector$<$ sensor\+\_\+msgs\+::\+Laser\+Scan $>$ {\bfseries laser\+\_\+scans}
+\item 
+\mbox{\Hypertarget{classEnvironment_ad3846a39039a5f42c71263cc6d6b8a46}\label{classEnvironment_ad3846a39039a5f42c71263cc6d6b8a46}} 
+bool {\bfseries draw\+\_\+laser}
+\item 
+\mbox{\Hypertarget{classEnvironment_a1a91472adf2e545d121e4a2772e7cdc6}\label{classEnvironment_a1a91472adf2e545d121e4a2772e7cdc6}} 
+float {\bfseries block\+\_\+size}
+\item 
+\mbox{\Hypertarget{classEnvironment_acf4731271806e8e82928f8372eeffe01}\label{classEnvironment_acf4731271806e8e82928f8372eeffe01}} 
+float {\bfseries scale\+\_\+factor}
+\item 
+\mbox{\Hypertarget{classEnvironment_a040e4b938a2ca89a9b05c601e527eda8}\label{classEnvironment_a040e4b938a2ca89a9b05c601e527eda8}} 
+float {\bfseries laser\+\_\+max\+\_\+angle}
+\item 
+\mbox{\Hypertarget{classEnvironment_aa204680795a17bbad3e7703c494cc076}\label{classEnvironment_aa204680795a17bbad3e7703c494cc076}} 
+float {\bfseries laser\+\_\+max\+\_\+dist}
+\item 
+\mbox{\Hypertarget{classEnvironment_a5bce91fee0e7c9a943f06ef91bd68874}\label{classEnvironment_a5bce91fee0e7c9a943f06ef91bd68874}} 
+float {\bfseries robot\+\_\+diam}
+\item 
+\mbox{\Hypertarget{classEnvironment_aa63229747a1982be93c1663a9c61f6b7}\label{classEnvironment_aa63229747a1982be93c1663a9c61f6b7}} 
+float {\bfseries robot\+\_\+radius}
+\item 
+\mbox{\Hypertarget{classEnvironment_a031cbd094ec9cd3be1057870d327e298}\label{classEnvironment_a031cbd094ec9cd3be1057870d327e298}} 
+float {\bfseries map\+\_\+width}
+\item 
+\mbox{\Hypertarget{classEnvironment_a4fb3460c685dce8951f875d046c805de}\label{classEnvironment_a4fb3460c685dce8951f875d046c805de}} 
+float {\bfseries map\+\_\+height}
+\item 
+\mbox{\Hypertarget{classEnvironment_a756247b802f59edf5dffc2ff97aa40fa}\label{classEnvironment_a756247b802f59edf5dffc2ff97aa40fa}} 
+float {\bfseries goal\+\_\+reaching\+\_\+reward}
+\item 
+\mbox{\Hypertarget{classEnvironment_a97d3aa7ed7a85db2d1bc5b0520e33ace}\label{classEnvironment_a97d3aa7ed7a85db2d1bc5b0520e33ace}} 
+float {\bfseries collision\+\_\+reward}
+\item 
+\mbox{\Hypertarget{classEnvironment_a3da0b9cbf7dcb249d90004c2284fbff4}\label{classEnvironment_a3da0b9cbf7dcb249d90004c2284fbff4}} 
+float {\bfseries step\+\_\+reward}
+\item 
+\mbox{\Hypertarget{classEnvironment_af67562df9c4eaac30e4d9b943b6ebf26}\label{classEnvironment_af67562df9c4eaac30e4d9b943b6ebf26}} 
+std\+::string {\bfseries map\+\_\+path}
+\item 
+\mbox{\Hypertarget{classEnvironment_aa6168e6f2d66b97a4b3690c19119f8ed}\label{classEnvironment_aa6168e6f2d66b97a4b3690c19119f8ed}} 
+int {\bfseries render\+\_\+height}
+\item 
+\mbox{\Hypertarget{classEnvironment_a9f5ca753014297d8a1517ddccb3ec0c2}\label{classEnvironment_a9f5ca753014297d8a1517ddccb3ec0c2}} 
+int {\bfseries laser\+\_\+nrays}
+\item 
+\mbox{\Hypertarget{classEnvironment_ae0afb8fb50b04214a93b2aad127ccf68}\label{classEnvironment_ae0afb8fb50b04214a93b2aad127ccf68}} 
+int {\bfseries number\+\_\+of\+\_\+agents}
+\item 
+\mbox{\Hypertarget{classEnvironment_a10c9ffda2061f72b25bf57471a7f0eca}\label{classEnvironment_a10c9ffda2061f72b25bf57471a7f0eca}} 
+cv\+::\+Mat {\bfseries map\+\_\+image\+\_\+raw}
+\item 
+\mbox{\Hypertarget{classEnvironment_af12fd7cd085a3f4619db87f0d6b1d11d}\label{classEnvironment_af12fd7cd085a3f4619db87f0d6b1d11d}} 
+cv\+::\+Mat {\bfseries map\+\_\+image}
+\item 
+\mbox{\Hypertarget{classEnvironment_a4c255b78a240762751bfed73b7abf1c4}\label{classEnvironment_a4c255b78a240762751bfed73b7abf1c4}} 
+cv\+::\+Mat {\bfseries rendered\+\_\+image}
+\item 
+\mbox{\Hypertarget{classEnvironment_ad3ed006c1b56dc51b0e7aeca93d7993d}\label{classEnvironment_ad3ed006c1b56dc51b0e7aeca93d7993d}} 
+cv\+::\+Scalar {\bfseries color}
+\item 
+\mbox{\Hypertarget{classEnvironment_a2051c6520814e379b4718634e4d435c7}\label{classEnvironment_a2051c6520814e379b4718634e4d435c7}} 
+bool {\bfseries done}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\mbox{\hyperlink{classEnvironment}{Environment}} for multi-\/agent path finding simulation. 
+
+This is the core (without R\+OS) class, that includes the physics and visualization. Multiple agents can be added, and any map can be used. 
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\mbox{\Hypertarget{classEnvironment_a626c47eb76814e2160b26008081ff290}\label{classEnvironment_a626c47eb76814e2160b26008081ff290}} 
+\index{Environment@{Environment}!Environment@{Environment}}
+\index{Environment@{Environment}!Environment@{Environment}}
+\doxysubsubsection{\texorpdfstring{Environment()}{Environment()}}
+{\footnotesize\ttfamily Environment\+::\+Environment (\begin{DoxyParamCaption}\item[{std\+::string}]{\+\_\+map\+\_\+path,  }\item[{float}]{\+\_\+physics\+\_\+step\+\_\+size = {\ttfamily 0.01},  }\item[{float}]{\+\_\+laser\+\_\+max\+\_\+angle = {\ttfamily 45.$\ast$M\+\_\+PI/180.},  }\item[{float}]{\+\_\+laser\+\_\+max\+\_\+dist = {\ttfamily 10.},  }\item[{float}]{\+\_\+robot\+\_\+diam = {\ttfamily 0.8},  }\item[{int}]{\+\_\+velocity\+\_\+iterations = {\ttfamily 6},  }\item[{int}]{\+\_\+position\+\_\+iterations = {\ttfamily 2},  }\item[{int}]{\+\_\+render\+\_\+height = {\ttfamily 700},  }\item[{int}]{\+\_\+laser\+\_\+nrays = {\ttfamily 10},  }\item[{bool}]{\+\_\+draw\+\_\+laser = {\ttfamily false},  }\item[{float}]{\+\_\+goal\+\_\+reaching\+\_\+reward = {\ttfamily 0.},  }\item[{float}]{\+\_\+collision\+\_\+reward = {\ttfamily -\/1.},  }\item[{float}]{\+\_\+step\+\_\+reward = {\ttfamily -\/1.} }\end{DoxyParamCaption})}
+
+
+
+Sets the default parameters, and calls \mbox{\hyperlink{classEnvironment_ae4ce7d9e59dbc44f87015461453f49b3}{init\+\_\+map()}} and \mbox{\hyperlink{classEnvironment_a9e00bd32644e4c37d731f04bcd0940f4}{init\+\_\+physics()}} 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \+\_\+map\+\_\+path} & Map image to load \\
+\hline
+{\em \+\_\+physics\+\_\+step\+\_\+size} & Time delta for the physics engine \\
+\hline
+{\em \+\_\+laser\+\_\+max\+\_\+angle} & The angle of the laser raycast from the centerline \\
+\hline
+{\em \+\_\+laser\+\_\+max\+\_\+dist} & Maximum distance for the raycast \\
+\hline
+{\em \+\_\+robot\+\_\+diam} & Diameter of the simulated robots (one pixel on the map is 1 meter) \\
+\hline
+{\em \+\_\+velocity\+\_\+iterations} & Parameter of the box2d physics engine \\
+\hline
+{\em \+\_\+position\+\_\+iterations} & Parameter of the box2d physics engine \\
+\hline
+{\em \+\_\+render\+\_\+height} & Height of the rendered image (from which the width is given) \\
+\hline
+{\em \+\_\+laser\+\_\+nrays} & Number of rays for the raycast \\
+\hline
+{\em \+\_\+draw\+\_\+laser} & Wether to show the raycasts on the rendered image \\
+\hline
+{\em \+\_\+goal\+\_\+reaching\+\_\+reward} & Reward for reaching the goal (only if all the other agents reach their goal too) \\
+\hline
+{\em \+\_\+collision\+\_\+reward} & Added reward in the case of a collision \\
+\hline
+{\em \+\_\+step\+\_\+reward} & Reward added in every step, except when the goal is reached \\
+\hline
+\end{DoxyParams}
+\begin{DoxySeeAlso}{See also}
+\mbox{\hyperlink{classEnvironment_ae4ce7d9e59dbc44f87015461453f49b3}{init\+\_\+map()}}, \mbox{\hyperlink{classEnvironment_a9e00bd32644e4c37d731f04bcd0940f4}{init\+\_\+physics()}} 
+\end{DoxySeeAlso}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classEnvironment_a1a39f789194778e73ad0e1ef2433f7ac}\label{classEnvironment_a1a39f789194778e73ad0e1ef2433f7ac}} 
+\index{Environment@{Environment}!add\_agent@{add\_agent}}
+\index{add\_agent@{add\_agent}!Environment@{Environment}}
+\doxysubsubsection{\texorpdfstring{add\_agent()}{add\_agent()}}
+{\footnotesize\ttfamily int Environment\+::add\+\_\+agent (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+Create an agent with physics, random starting and goal positions. 
+
+\begin{DoxySeeAlso}{See also}
+\mbox{\hyperlink{classEnvironment_a0a4fbabaf68d5553299592c569ed5c18}{generate\+\_\+empty\+\_\+index()}} 
+\end{DoxySeeAlso}
+\begin{DoxyReturn}{Returns}
+Index of the new agent (starting from 0) 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classEnvironment_a0a4fbabaf68d5553299592c569ed5c18}\label{classEnvironment_a0a4fbabaf68d5553299592c569ed5c18}} 
+\index{Environment@{Environment}!generate\_empty\_index@{generate\_empty\_index}}
+\index{generate\_empty\_index@{generate\_empty\_index}!Environment@{Environment}}
+\doxysubsubsection{\texorpdfstring{generate\_empty\_index()}{generate\_empty\_index()}}
+{\footnotesize\ttfamily int Environment\+::generate\+\_\+empty\+\_\+index (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Randomly find an empty place on the map (no obstacles and no other agents nearby) 
+
+\begin{DoxyReturn}{Returns}
+The flattened (row$\ast$image\+\_\+width + col) index of the cell that is found to be free. 
+\end{DoxyReturn}
+
+\begin{DoxyExceptions}{Exceptions}
+{\em std\+::runtime\+\_\+error} & Raised if no free cells are found \\
+\hline
+\end{DoxyExceptions}
+\mbox{\Hypertarget{classEnvironment_ab8e805ad3a976724265eaff69400e32a}\label{classEnvironment_ab8e805ad3a976724265eaff69400e32a}} 
+\index{Environment@{Environment}!get\_observation@{get\_observation}}
+\index{get\_observation@{get\_observation}!Environment@{Environment}}
+\doxysubsubsection{\texorpdfstring{get\_observation()}{get\_observation()}}
+{\footnotesize\ttfamily mapf\+\_\+environment\+::\+Observation Environment\+::get\+\_\+observation (\begin{DoxyParamCaption}\item[{int}]{agent\+\_\+index }\end{DoxyParamCaption})}
+
+
+
+Calculate the observations for the given agent. 
+
+The observations are the following\+:
+\begin{DoxyItemize}
+\item sensor\+\_\+msgs/\+Laser\+Scan scan
+\item geometry\+\_\+msgs/\+Point agent\+\_\+pose \# linear x, y, and angle z
+\item geometry\+\_\+msgs/\+Point agent\+\_\+twist \# linear x, and angle z
+\item geometry\+\_\+msgs/\+Point goal\+\_\+pose \# x, y only
+\item float32 reward
+\item bool done
+\end{DoxyItemize}
+
+After the observation for the given agent is queried, the collision for that agent is set to false, so it is important that this function is called at most once per physics step. Also, the collisions are only set false here, but not in \mbox{\hyperlink{classEnvironment_ac22c7d2a724fb28e4b71d6723475e6e7}{step\+\_\+physics()}}
+
+\begin{DoxySeeAlso}{See also}
+\mbox{\hyperlink{classEnvironment_ac22c7d2a724fb28e4b71d6723475e6e7}{step\+\_\+physics()}} 
+\end{DoxySeeAlso}
+\begin{DoxyReturn}{Returns}
+The calculated observation 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classEnvironment_ae4ce7d9e59dbc44f87015461453f49b3}\label{classEnvironment_ae4ce7d9e59dbc44f87015461453f49b3}} 
+\index{Environment@{Environment}!init\_map@{init\_map}}
+\index{init\_map@{init\_map}!Environment@{Environment}}
+\doxysubsubsection{\texorpdfstring{init\_map()}{init\_map()}}
+{\footnotesize\ttfamily void Environment\+::init\+\_\+map (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Load map. 
+
+Load image at path \+\_\+map\+\_\+path. Image coordinates use the Open\+CV convention. \mbox{\Hypertarget{classEnvironment_a9e00bd32644e4c37d731f04bcd0940f4}\label{classEnvironment_a9e00bd32644e4c37d731f04bcd0940f4}} 
+\index{Environment@{Environment}!init\_physics@{init\_physics}}
+\index{init\_physics@{init\_physics}!Environment@{Environment}}
+\doxysubsubsection{\texorpdfstring{init\_physics()}{init\_physics()}}
+{\footnotesize\ttfamily void Environment\+::init\+\_\+physics (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Create box2d physics world, create boundaries and add obstacles based on the map image. 
+
+Physics coorinates use the Box2d convention. \mbox{\Hypertarget{classEnvironment_a84bea5f6023a135b869f338e53191e32}\label{classEnvironment_a84bea5f6023a135b869f338e53191e32}} 
+\index{Environment@{Environment}!process\_action@{process\_action}}
+\index{process\_action@{process\_action}!Environment@{Environment}}
+\doxysubsubsection{\texorpdfstring{process\_action()}{process\_action()}}
+{\footnotesize\ttfamily void Environment\+::process\+\_\+action (\begin{DoxyParamCaption}\item[{int}]{agent\+\_\+index,  }\item[{geometry\+\_\+msgs\+::\+Twist}]{action }\end{DoxyParamCaption})}
+
+
+
+Save the linear and angular velocity of the given agent. 
+
+However, the velocities are set only in the \mbox{\hyperlink{classEnvironment_ac22c7d2a724fb28e4b71d6723475e6e7}{step\+\_\+physics()}} \begin{DoxySeeAlso}{See also}
+\mbox{\hyperlink{classEnvironment_ac22c7d2a724fb28e4b71d6723475e6e7}{step\+\_\+physics()}} 
+\end{DoxySeeAlso}
+\mbox{\Hypertarget{classEnvironment_a4779c221230d53f9ac91c3b631df5ce2}\label{classEnvironment_a4779c221230d53f9ac91c3b631df5ce2}} 
+\index{Environment@{Environment}!remove\_agent@{remove\_agent}}
+\index{remove\_agent@{remove\_agent}!Environment@{Environment}}
+\doxysubsubsection{\texorpdfstring{remove\_agent()}{remove\_agent()}}
+{\footnotesize\ttfamily void Environment\+::remove\+\_\+agent (\begin{DoxyParamCaption}\item[{int}]{agent\+\_\+index }\end{DoxyParamCaption})}
+
+
+
+Remove the given agent and its goal from the simulation. 
+
+\begin{DoxySeeAlso}{See also}
+\mbox{\hyperlink{classEnvironment_a0a4fbabaf68d5553299592c569ed5c18}{generate\+\_\+empty\+\_\+index()}} 
+\end{DoxySeeAlso}
+\begin{DoxyReturn}{Returns}
+Index of the new agent (starting from 0) 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classEnvironment_a0e098b4273d7dc8f9bf70e7b578a0e3d}\label{classEnvironment_a0e098b4273d7dc8f9bf70e7b578a0e3d}} 
+\index{Environment@{Environment}!render@{render}}
+\index{render@{render}!Environment@{Environment}}
+\doxysubsubsection{\texorpdfstring{render()}{render()}}
+{\footnotesize\ttfamily cv\+::\+Mat Environment\+::render (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+Render the obstacles, agents, goals, optionally the raycasts, and show collisions as well. 
+
+\begin{DoxyReturn}{Returns}
+The rendered image 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classEnvironment_ac22c7d2a724fb28e4b71d6723475e6e7}\label{classEnvironment_ac22c7d2a724fb28e4b71d6723475e6e7}} 
+\index{Environment@{Environment}!step\_physics@{step\_physics}}
+\index{step\_physics@{step\_physics}!Environment@{Environment}}
+\doxysubsubsection{\texorpdfstring{step\_physics()}{step\_physics()}}
+{\footnotesize\ttfamily void Environment\+::step\+\_\+physics (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+Remove the given agent and its goal from the simulation. 
+
+First the internally stored linear and angular velocities are set. Then, the physics simulation step is calculated. Finally, the observations are updated\+:
+\begin{DoxyItemize}
+\item laser\+\_\+scans
+\item collisions
+\end{DoxyItemize}
+
+After that, the environment checks if all the agents reached their goals. If yes, then done=true is set. However, collisions are not set to false here, so as not to miss any. It is set to false after an observation is queried for the agent. \begin{DoxyReturn}{Returns}
+Index of the new agent (starting from 0) 
+\end{DoxyReturn}
+
+\begin{DoxyExceptions}{Exceptions}
+{\em std\+::runtime\+\_\+error} & Raised if done=true \\
+\hline
+\end{DoxyExceptions}
+\begin{DoxySeeAlso}{See also}
+\mbox{\hyperlink{classEnvironment_ab8e805ad3a976724265eaff69400e32a}{get\+\_\+observation()}} 
+\end{DoxySeeAlso}
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+mapf\+\_\+environment/include/mapf\+\_\+environment/environment\+\_\+core.\+h\item 
+mapf\+\_\+environment/src/environment\+\_\+core.\+cpp\end{DoxyCompactItemize}
