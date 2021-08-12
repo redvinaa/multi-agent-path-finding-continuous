@@ -20,9 +20,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 add_message_files(
   FILES
-  Value.msg
   Experience.msg
-  ExtendedState.msg
 )
 
 # add_service_files(
@@ -127,7 +125,5 @@ target_link_libraries(${PROJECT_NAME}
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
 
-catkin_add_gtest(${PROJECT_NAME}-test test/test_actor.cpp)
-if(TARGET ${PROJECT_NAME}-test)
-  target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
-endif()
+catkin_add_gtest(${PROJECT_NAME}-test test/test_maddpg.cpp)
+target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})

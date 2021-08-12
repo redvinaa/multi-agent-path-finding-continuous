@@ -1,20 +1,35 @@
+#pragma once
+
+#include "mapf_maddpg_agent/types.h"
+#include "mapf_maddpg_agent/network.h"
 #include <torch/torch.h>
-#include "geometry_msgs/Twist.h"
-#include <mapf_environment/Observation.h>
-#include <mapf_maddpg_agent/Value.h>
-#include <mapf_maddpg_agent/Experience.h>
-#include <mapf_maddpg_agent/ExtendedState.h>
 #include <vector>
+#include <gtest/gtest.h>
 
-using Value         = mapf_maddpg_agent::Value;
-using Observation   = mapf_environment::Observation;
-using Action        = geometry_msgs::Twist;
-using ExtendedState = mapf_maddpg_agent::ExtendedState;
-using Experience    = mapf_maddpg_agent::Experience;
+/*! \brief Multi-agent actor-critic algorithm, Actor class
+ *
+ * Based on: https://arxiv.org/abs/1706.02275
+ */
+class Actor
+{
+    private:
+        int agent_index;
+        Net* net;
+        torch::optim::Optimizer* optim;
 
-class Actor {
-	public:
-		Actor(int _agent_index);
-		Action get_action(Observation obs);
-		void train(std::vector<Experience> experiences, std::vector<Value> values);
+    public:
+        Actor(int _agent_index, Net* _net, torch::optim::Optimizer* _optim);
+
+        /*! \brief Calculate action based on (local) state
+         */
+        Action get_action(Observation obs) const;
+
+        /*! \brief Train network on batch of experiences
+         *
+         * This is a policy-gradient algorithm,
+         * the values calculated by the critic are used as baselines,
+         *
+         * \sa Critic
+         */
+        void train(std::vector<Experience> experiences, std::vector<Value> values);
 };

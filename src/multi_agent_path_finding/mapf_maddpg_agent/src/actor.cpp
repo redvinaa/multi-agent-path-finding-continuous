@@ -1,15 +1,21 @@
 #include "mapf_maddpg_agent/actor.h"
+#include "mapf_maddpg_agent/types.h"
+#include "mapf_maddpg_agent/network.h"
 #include <torch/torch.h>
-#include <geometry_msgs/Twist.h>
-#include <mapf_environment/Observation.h>
 
-Actor::Actor(int agent_index) {
-	
+Actor::Actor(int _agent_index, Net* _net, torch::optim::Optimizer* _optim):
+    agent_index(_agent_index), net(_net), optim(_optim)
+{
+
 }
 
-geometry_msgs::Twist Actor::step(mapf_environment::Observation obs, mapf_maddpg_agent::Value val) {
-	return geometry_msgs::Twist();
+Action Actor::get_action(Observation obs) const
+{
+    Action action;
+    return action; // TODO
 }
-geometry_msgs::Twist Actor::action_selector(mapf_environment::Observation obs) {
-	return geometry_msgs::Twist();
+
+void Actor::train(std::vector<Experience> experiences, std::vector<Value> values)
+{
+    
 }
