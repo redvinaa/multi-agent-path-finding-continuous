@@ -1,6 +1,7 @@
 // ros datatype headers
 #include <geometry_msgs/Twist.h>
 #include <mapf_environment/Observation.h>
+#include <mapf_environment/EnvStep.h>
 #include <sensor_msgs/LaserScan.h>
 
 // other headers
@@ -154,12 +155,14 @@ int Environment::generate_empty_index() const
 
         // check if any agent is near
         bool somethings_near = false;
-        for (int agent=0; agent<agent_bodies.size(); agent++) {
-            if ((agent_bodies[agent]->GetPosition() - index_position).Length() < robot_diam) {
+        for (auto& agent: agent_bodies) {
+            if ((agent->GetPosition() - index_position).Length() < robot_diam) {
                 somethings_near = true;
                 break;
             }
-            if ((goal_positions[agent] - index_position).Length() < robot_diam) {
+        }
+        for (auto& goal: goal_positions) {
+            if ((goal - index_position).Length() < robot_diam) {
                 somethings_near = true;
                 break;
             }
@@ -174,23 +177,13 @@ void Environment::reset()
 {
     done = false;
 
-    // generate new goal for all agents
-    for (int i=0; i<agent_bodies.size(); i++) {
-        b2Body* agent = agent_bodies[i];
-        int index = generate_empty_index();
-        float row = index / map_image_raw.size().width;
-        float col = index - row * map_image_raw.size().width; // integer division
-        float x_pos = col + 0.5;
-        float y_pos = map_height - row - 0.5;
-        goal_positions[i] = b2Vec2(x_pos, y_pos);
+    // create new agents with new goals
+    int number_of_agents_ = number_of_agents;
+    while (number_of_agents > 0)
+        remove_agent(number_of_agents-1);
 
-        agent->SetLinearVelocity(b2Vec2(0., 0.));
-        agent->SetAngularVelocity(0.);
-
-        std::fill(laser_scans[i].ranges.begin(), laser_scans[i].ranges.end(), 0.);
-    }
-
-    std::fill(collisions.begin(), collisions.end(), false);
+    for (int i=0; i<number_of_agents_; i++)
+        add_agent();
 }
 
 
@@ -209,14 +202,6 @@ int Environment::add_agent()
     bodyDef.position.Set(x_pos, y_pos);
     b2Body* body = world.CreateBody(&bodyDef);
 
-    // generate random goal position
-    index = generate_empty_index();
-    row = index / map_image_raw.size().width;
-    col = index - row * map_image_raw.size().width; // integer division
-    x_pos = col + 0.5;
-    y_pos = map_height - row - 0.5;
-    goal_positions.push_back(b2Vec2(x_pos, y_pos));
-
     b2CircleShape circleShape;
     circleShape.m_p.Set(0, 0);
     circleShape.m_radius = robot_radius;
@@ -229,6 +214,14 @@ int Environment::add_agent()
 
     body->CreateFixture(&fixtureDef);
     agent_bodies.push_back(body);
+
+    // generate random goal position
+    index = generate_empty_index();
+    row = index / map_image_raw.size().width;
+    col = index - row * map_image_raw.size().width; // integer division
+    x_pos = col + 0.5;
+    y_pos = map_height - row - 0.5;
+    goal_positions.push_back(b2Vec2(x_pos, y_pos));
 
     // generate random color for agent
     int b = (float)rand() / (float)RAND_MAX * 255;
@@ -379,16 +372,20 @@ cv::Mat Environment::render()
 
         const cv::Point* ppt[1] = { triangle[0] };
         int npt[] = {3};
-        if (collisions[i])
-            cv::fillPoly(rendered_image, ppt, npt, 1, cv::Scalar(0, 0, 255));
-        else
+        if (collisions[i]) {
+            // arrow
+            cv::fillPoly(rendered_image, ppt, npt, 1, agent_colors[i]);
+
+            // small circle
+            cv::circle(rendered_image, center, (int)(inner_radius*scale_factor), agent_colors[i], -1);
+        }
+        else {
+            // arrow
             cv::fillPoly(rendered_image, ppt, npt, 1, cv::Scalar(255, 255, 255));
 
-        // small circle
-        if (collisions[i])
-            cv::circle(rendered_image, center, (int)(inner_radius*scale_factor), cv::Scalar(0, 0, 255), -1);
-        else
+            // small circle
             cv::circle(rendered_image, center, (int)(inner_radius*scale_factor), cv::Scalar(255, 255, 255), -1);
+        }
 
         // number
         cv::Point textSize = cv::getTextSize(std::to_string(i), font, scale, thickness, &base_line);
@@ -419,43 +416,43 @@ void Environment::process_action(int agent_index, geometry_msgs::Twist action)
     agent_ang_vel[agent_index] = action.angular.z;
 }
 
-mapf_environment::Observation Environment::get_observation(int agent_index)
+mapf_environment::EnvStep Environment::get_observation(int agent_index)
 {
     b2Body* agent = agent_bodies[agent_index];
-    mapf_environment::Observation obs;
+    mapf_environment::EnvStep env_obs;
 
     // scan
-    obs.scan = laser_scans[agent_index];
+    env_obs.observation.scan = laser_scans[agent_index];
 
     // position
     b2Vec2 position = agent_bodies[agent_index]->GetPosition();
     float yaw = agent->GetAngle();
-    obs.agent_pose.x = position.x;
-    obs.agent_pose.y = position.y;
-    obs.agent_pose.z = yaw;
+    env_obs.observation.agent_pose.x = position.x;
+    env_obs.observation.agent_pose.y = position.y;
+    env_obs.observation.agent_pose.z = yaw;
 
     // twist
     b2Vec2 vel = agent->GetLinearVelocity();
     float ang_vel = agent->GetAngularVelocity();
-    obs.agent_twist.x = vel.x;
-    obs.agent_twist.y = vel.y;
-    obs.agent_twist.z = ang_vel;
+    env_obs.observation.agent_twist.x = vel.x;
+    env_obs.observation.agent_twist.y = vel.y;
+    env_obs.observation.agent_twist.z = ang_vel;
 
     // goal pose
-    obs.goal_pose.x = goal_positions[agent_index].x;
-    obs.goal_pose.y = goal_positions[agent_index].y;
+    env_obs.observation.goal_pose.x = goal_positions[agent_index].x;
+    env_obs.observation.goal_pose.y = goal_positions[agent_index].y;
 
     // reward and done
+    env_obs.reward = 0;
+    env_obs.done = done;
     if (done) {
-        obs.reward = goal_reaching_reward;
-        obs.done = true;
+        env_obs.reward = goal_reaching_reward;
     } else {
-        obs.reward = step_reward;
-        if (collisions[agent_index]) obs.reward += collision_reward;
-        obs.done = false;
+        env_obs.reward = step_reward;
+        if (collisions[agent_index]) env_obs.reward += collision_reward;
     }
 
     collisions[agent_index] = false;
     
-    return obs;
+    return env_obs;
 }

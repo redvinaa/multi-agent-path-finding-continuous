@@ -1,4 +1,6 @@
 #include "mapf_environment/environment_core.h"
+#include "mapf_environment/EnvStep.h"
+#include "mapf_environment/Observation.h"
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <ros/package.h>
@@ -143,8 +145,10 @@ TEST_F(EnvironmentFixture, testContact)
     EXPECT_FALSE(environment->collisions[0]);
 
     // test collision between agent and wall
+    environment->reset();
     float robot_radius = environment->robot_radius;
     environment->agent_bodies[0]->SetTransform(b2Vec2(robot_radius, 4.-robot_radius), 0);
+    environment->goal_positions[0].Set(4.-robot_radius, 4.-robot_radius);
 
     environment->step_physics();
     EXPECT_TRUE(environment->collisions[0]);
@@ -153,7 +157,9 @@ TEST_F(EnvironmentFixture, testContact)
     environment->reset();
     environment->add_agent();
     environment->agent_bodies[0]->SetTransform(b2Vec2(robot_radius+0.1, 4.-robot_radius-0.1), 0);
+    environment->goal_positions[0].Set(4.-robot_radius, 4.-robot_radius);
     environment->agent_bodies[1]->SetTransform(b2Vec2(3*robot_radius+0.2, 4.-robot_radius-0.1), M_PI);
+    environment->goal_positions[1].Set(4.-robot_radius, 4.-robot_radius);
     // Now there 2 agents, both in the upper row, facing each other,
     // and there is 0.1 meters distance between them
     // with a total of 2 m/s, and dt=0.01, it should take
@@ -167,6 +173,7 @@ TEST_F(EnvironmentFixture, testContact)
     environment->process_action(1, action);
 
     for (int i=0; i<6; i++) {
+
         environment->step_physics();
         auto find_coll = std::find(environment->collisions.begin(), environment->collisions.end(), true);
         EXPECT_TRUE(find_coll == environment->collisions.end()); // all false
@@ -197,6 +204,10 @@ TEST_F(EnvironmentFixture, testMovement)
 
 TEST_F(EnvironmentFixture, testObservation)
 {
+    EXPECT_EQ(environment->step_reward, -1);
+    EXPECT_EQ(environment->collision_reward, -1);
+    EXPECT_EQ(environment->goal_reaching_reward, 0);
+
     environment->reset();
     environment->add_agent();
 
@@ -206,33 +217,36 @@ TEST_F(EnvironmentFixture, testObservation)
     environment->process_action(0, action);
 
     environment->step_physics();
-    mapf_environment::Observation obs = environment->get_observation(0);
+    mapf_environment::EnvStep env_obs = environment->get_observation(0);
 
     b2Transform agent_tf_expected = environment->agent_bodies[0]->GetTransform();
-    b2Vec2 agent_pose(obs.agent_pose.x, obs.agent_pose.y);
+    b2Vec2 agent_pose(env_obs.observation.agent_pose.x, env_obs.observation.agent_pose.y);
     EXPECT_EQ(agent_pose, agent_tf_expected.p);
 
-    EXPECT_EQ(obs.agent_twist.x, 1);
-    EXPECT_EQ(obs.agent_twist.y, 0);
-    EXPECT_EQ(obs.agent_twist.z, -0.5);
-    EXPECT_EQ(obs.reward, -1);
-    EXPECT_EQ(obs.done, false);
+    EXPECT_EQ(env_obs.observation.agent_twist.x, 1);
+    EXPECT_EQ(env_obs.observation.agent_twist.y, 0);
+    EXPECT_EQ(env_obs.observation.agent_twist.z, -0.5);
+    EXPECT_EQ(env_obs.reward, -1);
+    EXPECT_EQ(env_obs.done, false);
 
     // test collision reward
     float robot_radius = environment->robot_radius;
     environment->agent_bodies[0]->SetTransform(b2Vec2(robot_radius, 4.-robot_radius), 0);
+    environment->goal_positions[0].Set(4.-robot_radius, 4.-robot_radius);
 
     environment->step_physics();
-    obs = environment->get_observation(0);
-    EXPECT_EQ(obs.reward, -2);
-    EXPECT_EQ(obs.done, false);
+
+    EXPECT_TRUE(environment->collisions[0]);
+    env_obs = environment->get_observation(0);
+    EXPECT_EQ(env_obs.done, false);
+    EXPECT_EQ(env_obs.reward, -2);
 
     // test goal reaching reward
     environment->agent_bodies[0]->SetTransform(environment->goal_positions[0], 0);
     environment->step_physics();
-    obs = environment->get_observation(0);
-    EXPECT_EQ(obs.reward, 0);
-    EXPECT_EQ(obs.done, true);
+    env_obs = environment->get_observation(0);
+    EXPECT_EQ(env_obs.done, true);
+    EXPECT_EQ(env_obs.reward, 0);
 
 }
 

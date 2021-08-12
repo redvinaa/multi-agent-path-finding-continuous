@@ -21,6 +21,7 @@ find_package(box2d REQUIRED)
 add_message_files(
   FILES
   Observation.msg
+  EnvStep.msg
 )
 
 add_service_files(
@@ -33,6 +34,7 @@ generate_messages(
   std_msgs
   geometry_msgs
   sensor_msgs
+  mapf_environment
 )
 
 catkin_package(

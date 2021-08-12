@@ -1,7 +1,7 @@
 #pragma once
 
 // ros datatype headers
-#include "mapf_environment/Observation.h"
+#include "mapf_environment/EnvStep.h"
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/LaserScan.h"
 
@@ -112,7 +112,7 @@ class Environment
          */
         int generate_empty_index(void) const;
 
-        /*! \brief Set done=false, and generate new goals for all the current agents
+        /*! \brief Set done=false, generate new starting positions and goals for all agents
          */
         void reset();
 
@@ -182,5 +182,5 @@ class Environment
          * \sa step_physics()
          * \return The calculated observation
          */
-        mapf_environment::Observation get_observation(int agent_index);
+        mapf_environment::EnvStep get_observation(int agent_index);
 };
