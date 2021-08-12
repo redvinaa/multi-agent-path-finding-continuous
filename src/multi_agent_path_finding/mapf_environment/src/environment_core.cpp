@@ -459,3 +459,49 @@ mapf_environment::EnvStep Environment::get_observation(int agent_index)
     
     return env_obs;
 }
+
+std::vector<float> Environment::serialize_observation(mapf_environment::Observation obs)
+{
+    std::vector<float> serialized;
+
+    // pose
+    serialized.push_back(obs.agent_pose.x);
+    serialized.push_back(obs.agent_pose.y);
+    serialized.push_back(obs.agent_pose.z);
+
+    // twist
+    serialized.push_back(obs.agent_twist.x);
+    serialized.push_back(obs.agent_twist.z);
+
+    // goal
+    serialized.push_back(obs.goal_pose.x);
+    serialized.push_back(obs.goal_pose.y);
+
+    // scan
+    serialized.insert(serialized.end(), obs.scan.ranges.begin(), obs.scan.ranges.end());
+
+    return serialized;
+}
+
+mapf_environment::Observation Environment::deserialize_observation(std::vector<float> obs)
+{
+    mapf_environment::Observation deserialized;
+
+    // pose
+    deserialized.agent_pose.x = obs[0];
+    deserialized.agent_pose.y = obs[1];
+    deserialized.agent_pose.z = obs[2];
+
+    // twist
+    deserialized.agent_twist.x = obs[3];
+    deserialized.agent_twist.z = obs[4];
+
+    // goal
+    deserialized.goal_pose.x = obs[5];
+    deserialized.goal_pose.y = obs[6];
+
+    // scan
+    deserialized.scan.ranges.insert(deserialized.scan.ranges.begin(), obs.begin()+7, obs.end()); 
+
+    return deserialized;
+}

@@ -250,6 +250,15 @@ TEST_F(EnvironmentFixture, testObservation)
 
 }
 
+TEST_F(EnvironmentFixture, testSerialize)
+{
+    environment->reset();
+    environment->add_agent();
+    auto obs = environment->get_observation(0);
+    auto ser_obs = Environment::serialize_observation(obs.observation);
+    EXPECT_EQ(obs.observation, Environment::deserialize_observation(ser_obs));
+}
+
 
 int main(int argc, char **argv)
 {

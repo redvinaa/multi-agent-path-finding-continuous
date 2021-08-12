@@ -57,6 +57,7 @@ class Environment
         FRIEND_TEST(EnvironmentFixture, testContact);
         FRIEND_TEST(EnvironmentFixture, testMovement);
         FRIEND_TEST(EnvironmentFixture, testObservation);
+        FRIEND_TEST(EnvironmentFixture, testSerialize);
 
     public:
         bool done;
@@ -186,4 +187,22 @@ class Environment
          * \return The calculated observation
          */
         mapf_environment::EnvStep get_observation(int agent_index);
+
+        /*! \brief Take the Observation structure and
+         * put the relevant data in a float vector
+         *
+         * \return Serialized (vectorized) observation
+         *
+         * \sa deserialize_observation()
+         */
+        static std::vector<float> serialize_observation(mapf_environment::Observation obs);
+
+        /*! \brief Take the Observation structure and
+         * put the relevant data in a float vector
+         *
+         * \return Deserialized (mapf_environment::Observation type) observation
+         *
+         * \sa serialize_observation()
+         */
+        static mapf_environment::Observation deserialize_observation(std::vector<float> obs);
 };
