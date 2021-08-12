@@ -326,7 +326,7 @@ void Environment::step_physics()
         done = true;
 }
 
-cv::Mat Environment::render()
+cv::Mat Environment::render(bool show, int wait)
 {
     rendered_image = cv::Scalar(255, 255, 255);
 
@@ -406,6 +406,9 @@ cv::Mat Environment::render()
             }
         }
     }
+
+    cv::imshow("Multi-agent path finding environment", rendered_image);
+    cv::waitKey(wait);
 
     return rendered_image;
 }

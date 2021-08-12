@@ -151,9 +151,12 @@ class Environment
         /*! \brief Render the obstacles, agents, goals, optionally
          * the raycasts, and show collisions as well
          *
+         * \param show If false, get image and return it, but don't show.
+         * \param wait Passed to cv::waitKey
+         *
          * \return The rendered image
          */
-        cv::Mat render();
+        cv::Mat render(bool show=true, int wait=0);
 
         /*! \brief Save the linear and angular velocity of the
          * given agent
