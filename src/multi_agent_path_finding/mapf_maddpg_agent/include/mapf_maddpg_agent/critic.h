@@ -12,21 +12,32 @@
  */
 class Critic
 {
-    public:
-        int number_of_agents;
+    private:
         Net* net;
         torch::optim::Optimizer* optim;
+        float gamma;
 
-        Critic(int _number_of_agents, Net* _net, torch::optim::Optimizer* _optim);
+        /*! \brief Serialize, aka. create one long vector from the collective observations
+         */
+        std::vector<float> serialize_collective(CollectiveObservation coll_obs) const;
+
+    public:
+        Critic(Net* _net, torch::optim::Optimizer* _optim, float _gamma);
 
         /*! \brief Calculate value of extended state
          * (that is, considering all agents)
          */
-        Value get_value(CollectiveObservation state);
+        Value get_value(CollectiveObservation coll_obs) const;
+
+        /*! \brief Vectorized overload
+         */
+        std::vector<Value> get_value(std::vector<CollectiveObservation> coll_obs) const;
 
         /*! \brief Train network on batch of experiences
          *
-         * This is basically a single-agent DQN algorithm,
+         * With respect to the CollectiveState, this is a single-agent 
+         * Bellman update algorithm on the value function:
+         * V(x) <- V(x) + step_size * [ r + V(x_) - V(x)]
          *
          * One experience consists of
          *   - CollectiveState x (= x1, ..., xn)
@@ -35,10 +46,10 @@ class Critic
          *   - CollectiveState x_ (the next state)
          *   - Done
          *
-         *  The states include the rewards and also if done==true
+         *  \return Average loss
          *
          * \sa Actor
          */
-        std::vector<Value> train(std::vector<Experience> experiences);
+        float train(std::vector<Experience> experiences);
 };
 

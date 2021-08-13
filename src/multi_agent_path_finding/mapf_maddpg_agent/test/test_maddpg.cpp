@@ -1,31 +1,12 @@
+#include "mapf_maddpg_agent/network.h"
+#include "mapf_maddpg_agent/critic.h"
+#include "mapf_maddpg_agent/actor.h"
+#include "mapf_maddpg_agent/types.h"
+#include "mapf_environment/environment_core.h"
 #include <gtest/gtest.h>
 #include <torch/torch.h>
-#include "mapf_maddpg_agent/actor.h"
-#include "mapf_maddpg_agent/network.h"
-
-class ActorFixture : public testing::Test
-{
-    protected:
-        Actor* actor;
-        Net* net;
-        torch::optim::Optimizer* optim;
-
-        void SetUp() override {
-            net = new Net(10, 2, 10, 1);
-            optim = new torch::optim::Adam(net->parameters(), 1e-3);
-            actor = new Actor(0, net, optim);
-        }
-
-        void TearDown() override {
-            delete net;
-            delete optim;
-            delete actor;
-        }
-};
-
-TEST_F(ActorFixture, testConstructor)
-{
-}
+#include <ros/package.h>
+#include <vector>
 
 TEST(NetworkTest, testLossDecreases)
 {
@@ -67,6 +48,144 @@ TEST(NetworkTest, testLossDecreases)
         EXPECT_FALSE(params_before[i].equal(net.parameters()[i]));
 
     EXPECT_TRUE(losses.front() > losses.back()) << "Losses have not gone down";
+}
+
+
+class CriticFixture : public testing::Test
+{
+    protected:
+        Critic* critic;
+        Net* net;
+        torch::optim::Optimizer* optim;
+        Environment* environment;
+        int number_of_agents;
+
+        Action get_random_action()
+        {
+            Action action;
+            action.linear.x = rand();
+            action.angular.z = rand();
+
+            return action;
+        }
+
+        void SetUp() override
+        {
+            number_of_agents = 2;
+
+            std::string pkg_path = ros::package::getPath("mapf_environment");
+            std::string image_path = pkg_path + "/maps/test_4x4.jpg";
+            environment = new Environment(image_path);
+            environment->reset();
+
+            for (int i=0; i<number_of_agents; i++)
+                environment->add_agent();
+
+            int input_size = number_of_agents * environment->get_observation_size();
+
+            net = new Net(input_size, 1, 10, 1);
+            optim = new torch::optim::Adam(net->parameters(), /*lr=*/1e-3);
+            critic = new Critic(net, optim, 0.9);
+        }
+
+        void TearDown() override
+        {
+            delete net;
+            delete optim;
+            delete critic;
+            delete environment;
+        }
+};
+
+TEST_F(CriticFixture, testGetValues)
+{
+    CollectiveObservation coll_obs;
+    for (int i=0; i<number_of_agents; i++)
+        coll_obs.push_back(environment->get_observation(0).observation);
+
+    float value = critic->get_value(coll_obs);
+    EXPECT_TRUE(value != 0.);
+
+    std::vector<CollectiveObservation> coll_obs_v;
+    coll_obs_v.push_back(coll_obs);
+    coll_obs_v.push_back(coll_obs);
+
+    auto values = critic->get_value(coll_obs_v);
+}
+
+TEST_F(CriticFixture, testTraining)
+{
+    // collect experiences
+    std::vector<Experience> experiences;
+
+    Experience exp;
+    EnvStep env_obs_0, env_obs_1;
+    Action action;
+
+    env_obs_0 = environment->get_observation(0);
+    env_obs_1 = environment->get_observation(1);
+    exp.x_.push_back(env_obs_0.observation);
+    exp.x_.push_back(env_obs_1.observation);
+
+    for (int step=0; step<10; step++) {
+        exp.x = exp.x_;
+
+        exp.a.clear();
+        action = get_random_action();
+        environment->process_action(0, action);
+        exp.a.push_back(action);
+        action = get_random_action();
+        environment->process_action(1, action);
+        exp.a.push_back(action);
+
+        environment->step_physics();
+
+        env_obs_0 = environment->get_observation(0);
+        env_obs_1 = environment->get_observation(1);
+
+        exp.x_.clear();
+        exp.x_.push_back(env_obs_0.observation);
+        exp.x_.push_back(env_obs_1.observation);
+
+        EXPECT_TRUE(exp.x != exp.x_); // check if elements were deep copied
+
+        exp.reward = (env_obs_0.reward + env_obs_1.reward) / 2.;
+        exp.done = env_obs_0.done;
+
+        experiences.push_back(exp);
+
+        if (env_obs_0.done)
+            break;
+    }
+
+    // train
+    float loss = critic->train(experiences);
+    EXPECT_TRUE(loss != 0.);
+}
+
+
+class ActorFixture : public testing::Test
+{
+    protected:
+        Actor* actor;
+        Net* net;
+        torch::optim::Optimizer* optim;
+
+        void SetUp() override {
+            net = new Net(10, 2, 10, 1);
+            optim = new torch::optim::Adam(net->parameters(), 1e-3);
+            actor = new Actor(0, net, optim);
+        }
+
+        void TearDown() override {
+            delete net;
+            delete optim;
+            delete actor;
+        }
+};
+
+TEST_F(ActorFixture, testConstructor)
+{
 }
 
 
