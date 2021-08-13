@@ -21,6 +21,7 @@
 
 Environment::Environment(std::string _map_path,
     float _physics_step_size /* 0.01 */,
+    int _step_multiply /* 5 */,
     float _laser_max_angle /* 45.*M_PI/180. */,
     float _laser_max_dist /* 10. */,
     float _robot_diam /* 0.8 */,
@@ -40,6 +41,7 @@ Environment::Environment(std::string _map_path,
 
     map_path             = _map_path;
     physics_step_size    = _physics_step_size;
+    step_multiply        = _step_multiply;
     laser_max_angle      = _laser_max_angle;
     laser_max_dist       = _laser_max_dist;
     robot_diam           = _robot_diam;
@@ -176,6 +178,7 @@ int Environment::generate_empty_index() const
 void Environment::reset()
 {
     done = false;
+    episode_sim_time = 0.;
 
     // create new agents with new goals
     int number_of_agents_ = number_of_agents;
@@ -266,64 +269,70 @@ void Environment::step_physics()
     if (done == true)
         throw std::runtime_error("Attempted to step environment that is finished. Call reset() first");
 
-    for (int i=0; i<agent_bodies.size(); i++) {
-        b2Body* agent = agent_bodies[i];
-        float angle = agent->GetAngle();
+    for (int j=0; j<step_multiply; j++) {
 
-        agent->SetLinearVelocity(b2Vec2(agent_lin_vel[i]*std::cos(angle), agent_lin_vel[i]*std::sin(angle)));
-        agent->SetAngularVelocity(agent_ang_vel[i]);
-    }
+        for (int i=0; i<agent_bodies.size(); i++) {
+            b2Body* agent = agent_bodies[i];
+            float angle = agent->GetAngle();
 
-    world.Step(physics_step_size, velocity_iterations, position_iterations);
+            agent->SetLinearVelocity(b2Vec2(agent_lin_vel[i]*std::cos(angle), agent_lin_vel[i]*std::sin(angle)));
+            agent->SetAngularVelocity(agent_ang_vel[i]);
+        }
 
-    for (int i=0; i<agent_bodies.size(); i++) {
-        b2Body* agent = agent_bodies[i];
-        float angle = agent->GetAngle();
+        world.Step(physics_step_size, velocity_iterations, position_iterations);
+        episode_sim_time += physics_step_size;
 
-        // calculate laser scans
-        b2Vec2 pt_from, pt_to;
-        b2Vec2 position = agent->GetPosition();
+        for (int i=0; i<agent_bodies.size(); i++) {
+            b2Body* agent = agent_bodies[i];
+            float angle = agent->GetAngle();
 
-        pt_from.x = robot_radius * std::cos(angle) + position.x;
-        pt_from.y = robot_radius * std::sin(angle) + position.y;
-        for (int j=0; j<laser_nrays; j++) {
-            float laser_angle = angle - laser_max_angle + j * laser_max_angle * 2 / laser_nrays;
-            pt_to.x = laser_max_dist * std::cos(laser_angle) + pt_from.x;
-            pt_to.y = laser_max_dist * std::sin(laser_angle) + pt_from.y;
+            // calculate laser scans
+            b2Vec2 pt_from, pt_to;
+            b2Vec2 position = agent->GetPosition();
 
-            RayCastClosestCallback callback;
-            world.RayCast(&callback, pt_from, pt_to);
+            pt_from.x = robot_radius * std::cos(angle) + position.x;
+            pt_from.y = robot_radius * std::sin(angle) + position.y;
+            for (int j=0; j<laser_nrays; j++) {
+                float laser_angle = angle - laser_max_angle + j * laser_max_angle * 2 / laser_nrays;
+                pt_to.x = laser_max_dist * std::cos(laser_angle) + pt_from.x;
+                pt_to.y = laser_max_dist * std::sin(laser_angle) + pt_from.y;
 
-            float dist = laser_max_dist;
-            if (callback.hit) {
-                dist = (pt_from - callback.point).Length();
+                RayCastClosestCallback callback;
+                world.RayCast(&callback, pt_from, pt_to);
+
+                float dist = laser_max_dist;
+                if (callback.hit) {
+                    dist = (pt_from - callback.point).Length();
+                }
+                laser_scans[i].ranges[j] = dist;
             }
-            laser_scans[i].ranges[j] = dist;
-        }
 
-        // check collisions
-        bool hit = false;
-        for (b2ContactEdge* ce = agent->GetContactList(); ce; ce = ce->next) {
-            hit = ce->contact->IsTouching();
+            // check collisions
+            bool hit = false;
+            for (b2ContactEdge* ce = agent->GetContactList(); ce; ce = ce->next) {
+                hit = ce->contact->IsTouching();
+                if (hit)
+                    break;
+            }
             if (hit)
-                break;
+                collisions[i] = true;
         }
-        if (hit)
-            collisions[i] = true;
-    }
 
-    // check if all the agents reached their goal
-    bool check_done = true;
-    for (int i=0; i<agent_bodies.size(); i++) {
-        b2Body* agent = agent_bodies[i];
-        if ((agent->GetPosition() - goal_positions[i]).Length() > robot_diam) {
-            check_done = false;
+        // check if all the agents reached their goal
+        bool check_done = true;
+        for (int i=0; i<agent_bodies.size(); i++) {
+            b2Body* agent = agent_bodies[i];
+            if ((agent->GetPosition() - goal_positions[i]).Length() > robot_diam) {
+                check_done = false;
+                break;
+            }
+        }
+
+        if (check_done) {
+            done = true;
             break;
         }
     }
-
-    if (check_done)
-        done = true;
 }
 
 cv::Mat Environment::render(bool show, int wait)
@@ -456,8 +465,13 @@ mapf_environment::EnvStep Environment::get_observation(int agent_index)
     }
 
     collisions[agent_index] = false;
-    
+
     return env_obs;
+}
+
+float Environment::get_episode_sim_time()
+{
+    return episode_sim_time;
 }
 
 std::vector<float> Environment::serialize_observation(mapf_environment::Observation obs)

@@ -7,17 +7,6 @@
 #include <gtest/gtest.h>
 #include <geometry_msgs/Twist.h>
 
-TEST(EnvironmentCore, constructorRuns)
-{
-    try {
-        std::string pkg_path = ros::package::getPath("mapf_environment");
-        std::string image_path = pkg_path + "/maps/test_4x4.jpg";
-        Environment env(image_path);
-    } catch (const std::exception &e) {
-        ADD_FAILURE() << "Exception in constructor: " << e.what();
-    }
-}
-
 class EnvironmentFixture : public testing::Test
 {
     protected:
@@ -26,7 +15,7 @@ class EnvironmentFixture : public testing::Test
         void SetUp() override {
             std::string pkg_path = ros::package::getPath("mapf_environment");
             std::string image_path = pkg_path + "/maps/test_4x4.jpg";
-            environment = new Environment(image_path);
+            environment = new Environment(image_path, /*physics_step_size=*/0.01, /*step_multiply/*/1);
         }
 
         void TearDown() override {

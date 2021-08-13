@@ -41,14 +41,14 @@ class Environment
         std::vector<sensor_msgs::LaserScan> laser_scans;
         bool draw_laser;
         float block_size, scale_factor, laser_max_angle, laser_max_dist,
-            robot_diam, robot_radius, map_width, map_height, 
-            goal_reaching_reward, collision_reward, step_reward;
+            robot_diam, robot_radius, map_width, map_height,
+            goal_reaching_reward, collision_reward, step_reward, episode_sim_time;
         std::string map_path;
-        int render_height, laser_nrays, number_of_agents;
+        int render_height, laser_nrays, number_of_agents, step_multiply;
         cv::Mat map_image_raw, map_image, rendered_image;
         cv::Scalar color;
 
-        FRIEND_TEST(EnvironmentCore, constructorRuns);        
+        FRIEND_TEST(EnvironmentCore, constructorRuns);
         FRIEND_TEST(EnvironmentFixture, testConstructor);
         FRIEND_TEST(EnvironmentFixture, testMap);
         FRIEND_TEST(EnvironmentFixture, testPhysics);
@@ -66,6 +66,7 @@ class Environment
          *
          * \param _map_path Map image to load
          * \param _physics_step_size Time delta for the physics engine
+         * \param _step_multiply When step_physics() gets called, step the environment this many times
          * \param _laser_max_angle The angle of the laser raycast from the centerline
          * \param _laser_max_dist Maximum distance for the raycast
          * \param _robot_diam Diameter of the simulated robots (one pixel on the map is 1 meter)
@@ -81,6 +82,7 @@ class Environment
          */
         Environment(std::string _map_path,
             float _physics_step_size=0.01,
+            int _step_multiply=5,
             float _laser_max_angle=45.*M_PI/180.,
             float _laser_max_dist=10.,
             float _robot_diam=0.8,
@@ -187,6 +189,18 @@ class Environment
          * \return The calculated observation
          */
         mapf_environment::EnvStep get_observation(int agent_index);
+
+        /*! \brief How much time has passed in the simulation
+         * since the start of the episode
+         *
+         * Depends on physics_step_size, step_multiply and how many times
+         * step_physics() was called
+         *
+         * \sa step_physics()
+         *
+         * \return Simulation time
+         */
+        float get_episode_sim_time();
 
         /*! \brief Take the Observation structure and
          * put the relevant data in a float vector
