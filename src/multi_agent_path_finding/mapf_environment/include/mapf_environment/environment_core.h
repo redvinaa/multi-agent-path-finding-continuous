@@ -39,12 +39,12 @@ class Environment
         std::vector<float> agent_lin_vel, agent_ang_vel;
         std::vector<bool> collisions;
         std::vector<sensor_msgs::LaserScan> laser_scans;
-        bool draw_laser;
+        bool draw_laser, done;
         float block_size, scale_factor, laser_max_angle, laser_max_dist,
             robot_diam, robot_radius, map_width, map_height,
             goal_reaching_reward, collision_reward, step_reward, episode_sim_time;
         std::string map_path;
-        int render_height, laser_nrays, number_of_agents, step_multiply;
+        int render_height, laser_nrays, step_multiply, number_of_agents;
         cv::Mat map_image_raw, map_image, rendered_image;
         cv::Scalar color;
 
@@ -60,8 +60,6 @@ class Environment
         FRIEND_TEST(EnvironmentFixture, testSerialize);
 
     public:
-        bool done;
-
         /*! \brief Sets the default parameters, and calls init_map() and init_physics()
          *
          * \param _map_path Map image to load
@@ -190,6 +188,14 @@ class Environment
          */
         mapf_environment::EnvStep get_observation(int agent_index);
 
+        /*! \brief Is the episode over
+         */
+        bool is_done();
+
+        /*! \brief Get number of agents
+         */
+        int get_number_of_agents();
+
         /*! \brief How much time has passed in the simulation
          * since the start of the episode
          *
@@ -201,6 +207,10 @@ class Environment
          * \return Simulation time
          */
         float get_episode_sim_time();
+
+        /*! \brief Calculate how many relevant elements an observation has
+         */
+        int get_observation_size();
 
         /*! \brief Take the Observation structure and
          * put the relevant data in a float vector

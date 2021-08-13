@@ -469,9 +469,24 @@ mapf_environment::EnvStep Environment::get_observation(int agent_index)
     return env_obs;
 }
 
+bool Environment::is_done()
+{
+    return done;
+}
+
+int Environment::get_number_of_agents()
+{
+    return number_of_agents;
+}
+
 float Environment::get_episode_sim_time()
 {
     return episode_sim_time;
+}
+
+int Environment::get_observation_size()
+{
+    return 7 + laser_nrays;
 }
 
 std::vector<float> Environment::serialize_observation(mapf_environment::Observation obs)
