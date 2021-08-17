@@ -13,12 +13,13 @@
 class Actor
 {
     private:
-        int agent_index;
         Net* net;
         torch::optim::Optimizer* optim;
+        float entropy;
+
 
     public:
-        Actor(int _agent_index, Net* _net, torch::optim::Optimizer* _optim);
+        Actor(Net* _net, torch::optim::Optimizer* _optim, float _entropy);
 
         /*! \brief Calculate action based on (local) state
          */

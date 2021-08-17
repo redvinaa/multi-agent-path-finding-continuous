@@ -3,11 +3,8 @@
 #include "mapf_maddpg_agent/network.h"
 #include <torch/torch.h>
 
-Actor::Actor(int _agent_index, Net* _net, torch::optim::Optimizer* _optim):
-    agent_index(_agent_index), net(_net), optim(_optim)
-{
-
-}
+Actor::Actor(Net* _net, torch::optim::Optimizer* _optim, float _entropy):
+    net(_net), optim(_optim), entropy(_entropy) {}
 
 Action Actor::get_action(Observation obs) const
 {
@@ -17,5 +14,4 @@ Action Actor::get_action(Observation obs) const
 
 void Actor::train(std::vector<Experience> experiences, std::vector<Value> values)
 {
-    
 }
