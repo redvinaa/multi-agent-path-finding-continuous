@@ -88,7 +88,7 @@ endif()
 
 # When we build libtorch with the old GCC ABI, dependent libraries must too.
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-  set(TORCH_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=1")
+  set(TORCH_CXX_FLAGS "-D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 
 set_target_properties(torch PROPERTIES
