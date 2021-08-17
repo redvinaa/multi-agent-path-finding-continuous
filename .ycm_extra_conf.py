@@ -83,9 +83,9 @@ default_flags = [
 
     # include third party libraries
 	'-isystem',
-	os.path.expandvars('$ROS_WORKSPACE') + '/src/libtorch/include',
+	os.path.expandvars('$ROS_WORKSPACE') + '/src/multi-agent-path-finding-continuous/libtorch/include',
 	'-isystem',
-	os.path.expandvars('$ROS_WORKSPACE') + '/src/libtorch/include/torch/csrc/api/include',
+	os.path.expandvars('$ROS_WORKSPACE') + '/src/multi-agent-path-finding-continuous/libtorch/include/torch/csrc/api/include',
 	'-isystem',
 	'/usr/local/include/opencv4',
 ]

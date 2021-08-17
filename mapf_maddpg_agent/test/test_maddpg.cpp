@@ -174,7 +174,7 @@ class ActorFixture : public testing::Test
         void SetUp() override {
             net = new Net(10, 2, 10, 1);
             optim = new torch::optim::Adam(net->parameters(), 1e-3);
-            actor = new Actor(0, net, optim);
+            actor = new Actor(net, optim, 1); // TODO entropy
         }
 
         void TearDown() override {

@@ -3,7 +3,8 @@ project(mapf_maddpg_agent)
 
 add_compile_options(-std=c++14)
 
-list(APPEND CMAKE_PREFIX_PATH "/home/vince/study/multi-agent-path-finding/code/multi-agent-path-finding-continuous/src/libtorch")
+# list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../libtorch")
+list(APPEND CMAKE_PREFIX_PATH "/home/vince/catkin_ws/src/multi-agent-path-finding-continuous/libtorch")
 
 find_package(catkin REQUIRED COMPONENTS
   ddynamic_reconfigure
@@ -50,7 +51,6 @@ include_directories(
 )
 
 add_library(${PROJECT_NAME}
-  src/maddpg.cpp
   src/actor.cpp
   src/critic.cpp
   src/network.cpp

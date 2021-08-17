@@ -2,7 +2,6 @@
 #include <mapf_environment/Observation.h>
 #include <mapf_environment/EnvStep.h>
 #include <mapf_maddpg_agent/Experience.h>
-#include <mapf_maddpg_agent/ExtendedState.h>
 
 using Value                 = float;
 
