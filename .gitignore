@@ -132,4 +132,4 @@ dmypy.json
 build
 devel
 
-src/multi_agent_path_finding/doc/*
+doc/*
