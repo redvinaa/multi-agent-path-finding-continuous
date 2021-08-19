@@ -4,6 +4,7 @@
 #include "mapf_environment/EnvStep.h"
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/LaserScan.h"
+#include "mapf_environment/types.h"
 
 // other headers
 #include <box2d/box2d.h>
@@ -113,7 +114,7 @@ class Environment
          * \sa step_physics()
          * \return The calculated observation
          */
-        mapf_environment::Observation get_observation(int agent_index);
+        Observation get_observation(int agent_index);
 
         FRIEND_TEST(EnvironmentCore, constructorRuns);
         FRIEND_TEST(EnvironmentFixture, testConstructor);
@@ -194,7 +195,7 @@ class Environment
          *
          * Based on OpenAI Gym API
          */
-        mapf_environment::EnvStep step(std::vector<geometry_msgs::Twist> actions);
+        EnvStep step(std::vector<geometry_msgs::Twist> actions);
 
         /*! \brief Is the episode over
          */
@@ -230,7 +231,7 @@ class Environment
          *
          * \sa deserialize_observation()
          */
-        static std::vector<float> serialize_observation(mapf_environment::Observation obs);
+        static std::vector<float> serialize_observation(Observation obs);
 
         /*! \brief Take the Observation structure and
          * put the relevant data in a float vector (REWARD IS EMPTY)
@@ -238,9 +239,9 @@ class Environment
          * Because the serialized observation does not contain the reward,
          * that of the deserialized one is set to zero.
          *
-         * \return Deserialized (mapf_environment::Observation type) observation
+         * \return Deserialized (Observation type) observation
          *
          * \sa serialize_observation()
          */
-        static mapf_environment::Observation deserialize_observation(std::vector<float> obs);
+        static Observation deserialize_observation(std::vector<float> obs);
 };

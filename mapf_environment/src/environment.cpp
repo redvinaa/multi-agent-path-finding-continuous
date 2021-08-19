@@ -422,9 +422,9 @@ cv::Mat Environment::render(bool show, int wait)
     return rendered_image;
 }
 
-mapf_environment::EnvStep Environment::step(std::vector<geometry_msgs::Twist> actions)
+EnvStep Environment::step(std::vector<Action> actions)
 {
-    mapf_environment::EnvStep out;
+    EnvStep out;
 
     // process actions
     for (int i=0; i<number_of_agents; i++)
@@ -440,16 +440,16 @@ mapf_environment::EnvStep Environment::step(std::vector<geometry_msgs::Twist> ac
     return out;
 }
 
-void Environment::process_action(int agent_index, geometry_msgs::Twist action)
+void Environment::process_action(int agent_index, Action action)
 {
     agent_lin_vel[agent_index] = action.linear.x;
     agent_ang_vel[agent_index] = action.angular.z;
 }
 
-mapf_environment::Observation Environment::get_observation(int agent_index)
+Observation Environment::get_observation(int agent_index)
 {
     b2Body* agent = agent_bodies[agent_index];
-    mapf_environment::Observation obs;
+    Observation obs;
 
     // scan
     obs.scan = laser_scans[agent_index];
@@ -506,7 +506,7 @@ int Environment::get_observation_size()
     return 7 + laser_nrays;
 }
 
-std::vector<float> Environment::serialize_observation(mapf_environment::Observation obs)
+std::vector<float> Environment::serialize_observation(Observation obs)
 {
     std::vector<float> serialized;
 
@@ -529,9 +529,9 @@ std::vector<float> Environment::serialize_observation(mapf_environment::Observat
     return serialized;
 }
 
-mapf_environment::Observation Environment::deserialize_observation(std::vector<float> obs)
+Observation Environment::deserialize_observation(std::vector<float> obs)
 {
-    mapf_environment::Observation deserialized;
+    Observation deserialized;
 
     // pose
     deserialized.agent_pose.x = obs[0];

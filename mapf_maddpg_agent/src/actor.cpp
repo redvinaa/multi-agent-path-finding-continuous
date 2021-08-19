@@ -1,5 +1,6 @@
-#include "mapf_maddpg_agent/actor.h"
+#include "mapf_environment/types.h"
 #include "mapf_maddpg_agent/types.h"
+#include "mapf_maddpg_agent/actor.h"
 #include "mapf_maddpg_agent/network.h"
 #include <torch/torch.h>
 
