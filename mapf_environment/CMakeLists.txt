@@ -5,10 +5,8 @@ add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
-  roscpp
   sensor_msgs
   std_msgs
-  tf
   message_generation
   image_transport
   roslint
@@ -39,7 +37,7 @@ generate_messages(
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES mapf_environment
- CATKIN_DEPENDS geometry_msgs roscpp sensor_msgs std_msgs tf message_runtime
+ CATKIN_DEPENDS geometry_msgs sensor_msgs std_msgs message_runtime
  DEPENDS box2d OpenCV
 )
 

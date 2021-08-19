@@ -8,11 +8,9 @@ list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../libtorch")
 
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
-  roscpp
   mapf_environment
   sensor_msgs
   std_msgs
-  tf
   message_generation
   roslint
 )
@@ -39,7 +37,7 @@ generate_messages(
 catkin_package(
  INCLUDE_DIRS include ${TORCH_INCLUDE_DIRS}
  LIBRARIES maac_agent
- CATKIN_DEPENDS geometry_msgs roscpp mapf_environment sensor_msgs std_msgs tf message_runtime
+ CATKIN_DEPENDS geometry_msgs mapf_environment sensor_msgs std_msgs message_runtime
  DEPENDS Torch
 )
 
