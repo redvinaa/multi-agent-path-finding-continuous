@@ -1,7 +1,7 @@
 // Copyright 2021 Reda Vince
 
-#ifndef MAPF_MADDPG_AGENT_NETWORK_H
-#define MAPF_MADDPG_AGENT_NETWORK_H
+#ifndef MAAC_AGENT_NETWORK_H
+#define MAAC_AGENT_NETWORK_H
 
 #include <torch/torch.h>
 #include <vector>

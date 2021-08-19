@@ -1,11 +1,11 @@
 // Copyright 2021 Reda Vince
 
-#ifndef MAPF_MADDPG_AGENT_ACTOR_H
-#define MAPF_MADDPG_AGENT_ACTOR_H
+#ifndef MAAC_AGENT_ACTOR_H
+#define MAAC_AGENT_ACTOR_H
 
 #include "mapf_environment/types.h"
-#include "mapf_maddpg_agent/types.h"
-#include "mapf_maddpg_agent/network.h"
+#include "maac_agent/types.h"
+#include "maac_agent/network.h"
 #include <torch/torch.h>
 #include <vector>
 #include <gtest/gtest.h>
@@ -39,4 +39,4 @@ class Actor
         void train(std::vector<Experience> experiences, std::vector<Value> values);
 };
 
-#endif  // MAPF_MADDPG_AGENT_ACTOR_H
+#endif  // MAAC_AGENT_ACTOR_H

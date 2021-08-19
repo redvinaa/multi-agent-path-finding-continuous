@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(mapf_maddpg_agent)
+project(maac_agent)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -33,12 +33,12 @@ generate_messages(
   std_msgs
   geometry_msgs
   mapf_environment
-  mapf_maddpg_agent
+  maac_agent
 )
 
 catkin_package(
  INCLUDE_DIRS include ${TORCH_INCLUDE_DIRS}
- LIBRARIES mapf_maddpg_agent
+ LIBRARIES maac_agent
  CATKIN_DEPENDS geometry_msgs roscpp mapf_environment sensor_msgs std_msgs tf message_runtime
  DEPENDS Torch
 )
@@ -83,7 +83,7 @@ install(DIRECTORY include/${PROJECT_NAME}/
   FILES_MATCHING PATTERN "*.h"
 )
 
-catkin_add_gtest(${PROJECT_NAME}-test test/test_maddpg.cpp)
+catkin_add_gtest(${PROJECT_NAME}-test test/test_maac.cpp)
 target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 
 # linting

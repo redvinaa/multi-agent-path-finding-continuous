@@ -1,6 +1,6 @@
 // Copyright 2021 Reda Vince
 
-#include <mapf_maddpg_agent/network.h>
+#include <maac_agent/network.h>
 #include <string>
 
 Net::Net(int _input_size, int _output_size /* 2 */, int _hidden_layer_nodes /* 10 */, int _n_hidden_layers /* 1 */):

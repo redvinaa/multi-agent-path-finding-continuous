@@ -1,11 +1,11 @@
 // Copyright 2021 Reda Vince
 
-#ifndef MAPF_MADDPG_AGENT_CRITIC_H
-#define MAPF_MADDPG_AGENT_CRITIC_H
+#ifndef MAAC_AGENT_CRITIC_H
+#define MAAC_AGENT_CRITIC_H
 
 #include "mapf_environment/types.h"
-#include "mapf_maddpg_agent/types.h"
-#include "mapf_maddpg_agent/network.h"
+#include "maac_agent/types.h"
+#include "maac_agent/network.h"
 #include <torch/torch.h>
 #include <vector>
 
@@ -56,4 +56,4 @@ class Critic
         float train(std::vector<Experience> experiences);
 };
 
-#endif  // MAPF_MADDPG_AGENT_CRITIC_H
+#endif  // MAAC_AGENT_CRITIC_H

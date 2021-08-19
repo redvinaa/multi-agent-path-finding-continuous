@@ -1,10 +1,10 @@
 // Copyright 2021 Reda Vince
 
 #include "mapf_environment/types.h"
-#include "mapf_maddpg_agent/types.h"
-#include "mapf_maddpg_agent/network.h"
-#include "mapf_maddpg_agent/critic.h"
-#include "mapf_maddpg_agent/actor.h"
+#include "maac_agent/types.h"
+#include "maac_agent/network.h"
+#include "maac_agent/critic.h"
+#include "maac_agent/actor.h"
 #include "mapf_environment/environment.h"
 #include <gtest/gtest.h>
 #include <torch/torch.h>
