@@ -1,4 +1,4 @@
-#include "mapf_environment/environment_core.h"
+#include "mapf_environment/environment.h"
 #include "mapf_environment/EnvStep.h"
 #include "mapf_environment/Observation.h"
 #include <iostream>

@@ -53,7 +53,7 @@ include_directories(
 
 # add library
 add_library(${PROJECT_NAME}
-  src/environment_core.cpp
+  src/environment.cpp
   src/raycast_callback.cpp
 )
 
@@ -62,28 +62,6 @@ add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES}
 )
-
-# add executable
-# add_executable(${PROJECT_NAME}_node
-#     src/main.cpp
-#     src/environment_wrapper.cpp
-#     src/environment_core.cpp
-#     src/raycast_callback.cpp
-# )
-
-# set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME mapf_environment PREFIX "")
-
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES}
-# )
-
-
-## Mark executables for installation
-# install(TARGETS ${PROJECT_NAME}_node
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
 
 ## Mark libraries for installation
 install(TARGETS ${PROJECT_NAME}
@@ -100,5 +78,5 @@ install(DIRECTORY include/${PROJECT_NAME}/
 
 
 # testing
-catkin_add_gtest(${PROJECT_NAME}-test test/test_environment_core.cpp)
+catkin_add_gtest(${PROJECT_NAME}-test test/test_environment.cpp)
 target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})

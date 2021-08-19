@@ -2,7 +2,7 @@
 #include "mapf_maddpg_agent/critic.h"
 #include "mapf_maddpg_agent/actor.h"
 #include "mapf_maddpg_agent/types.h"
-#include "mapf_environment/environment_core.h"
+#include "mapf_environment/environment.h"
 #include <gtest/gtest.h>
 #include <torch/torch.h>
 #include <ros/package.h>

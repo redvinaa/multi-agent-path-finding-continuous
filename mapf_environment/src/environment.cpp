@@ -5,7 +5,7 @@
 #include <sensor_msgs/LaserScan.h>
 
 // other headers
-#include <mapf_environment/environment_core.h>
+#include <mapf_environment/environment.h>
 #include <mapf_environment/raycast_callback.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>

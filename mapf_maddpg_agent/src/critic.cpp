@@ -1,7 +1,7 @@
 #include "mapf_maddpg_agent/critic.h"
 #include "mapf_maddpg_agent/types.h"
 #include "mapf_maddpg_agent/network.h"
-#include "mapf_environment/environment_core.h"
+#include "mapf_environment/environment.h"
 #include <torch/torch.h>
 
 
