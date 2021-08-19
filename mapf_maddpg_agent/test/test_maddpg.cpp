@@ -1,3 +1,5 @@
+// Copyright 2021 Reda Vince
+
 #include "mapf_environment/types.h"
 #include "mapf_maddpg_agent/types.h"
 #include "mapf_maddpg_agent/network.h"
@@ -7,7 +9,9 @@
 #include <gtest/gtest.h>
 #include <torch/torch.h>
 #include <ros/package.h>
+#include <stdlib.h>
 #include <vector>
+#include <string>
 
 TEST(NetworkTest, testLossDecreases)
 {
@@ -17,7 +21,7 @@ TEST(NetworkTest, testLossDecreases)
     Net net(10, 2, 10, 3);
 
     auto params_before = net.parameters();
-    for (auto& param_group: params_before)
+    for (auto& param_group : params_before)
         param_group = param_group.clone();
 
     torch::Tensor dummy_input  = torch::rand({5, 10}, torch::kF32) + 4;
@@ -29,8 +33,8 @@ TEST(NetworkTest, testLossDecreases)
     torch::optim::SGD optimizer(net.parameters(), /* lr */0.001);
     std::vector<float> losses;
 
-    for (int epoch=0; epoch<5; epoch++) {
-
+    for (int epoch=0; epoch < 5; epoch++)
+    {
         optimizer.zero_grad();
 
         torch::Tensor prediction = net.forward(dummy_input);
@@ -45,7 +49,7 @@ TEST(NetworkTest, testLossDecreases)
         optimizer.step();
     }
 
-    for (int i=0; i<net.parameters().size(); i++)
+    for (int i=0; i < net.parameters().size(); i++)
         EXPECT_FALSE(params_before[i].equal(net.parameters()[i]));
 
     EXPECT_TRUE(losses.front() > losses.back()) << "Losses have not gone down";
@@ -60,12 +64,13 @@ class CriticFixture : public testing::Test
         torch::optim::Optimizer* optim;
         Environment* environment;
         int number_of_agents;
+        unsigned int seed = 0;
 
         Action get_random_action()
         {
             Action action;
-            action.linear.x = rand();
-            action.angular.z = rand();
+            action.linear.x = rand_r(&seed);
+            action.angular.z = rand_r(&seed);
 
             return action;
         }
@@ -79,7 +84,7 @@ class CriticFixture : public testing::Test
             environment = new Environment(image_path);
             environment->reset();
 
-            for (int i=0; i<number_of_agents; i++)
+            for (int i=0; i < number_of_agents; i++)
                 environment->add_agent();
 
             int input_size = number_of_agents * environment->get_observation_size();
@@ -101,7 +106,7 @@ class CriticFixture : public testing::Test
 TEST_F(CriticFixture, testGetValues)
 {
     CollectiveObservation coll_obs;
-    for (int i=0; i<number_of_agents; i++)
+    for (int i=0; i < number_of_agents; i++)
         coll_obs.push_back(environment->get_observation(0));
 
     float value = critic->get_value(coll_obs);
@@ -128,7 +133,8 @@ TEST_F(CriticFixture, testTraining)
     exp.x_.push_back(obs_0);
     exp.x_.push_back(obs_1);
 
-    for (int step=0; step<10; step++) {
+    for (int step=0; step < 10; step++)
+    {
         exp.x = exp.x_;
 
         exp.a.clear();
@@ -148,7 +154,7 @@ TEST_F(CriticFixture, testTraining)
         exp.x_.push_back(obs_0);
         exp.x_.push_back(obs_1);
 
-        EXPECT_TRUE(exp.x != exp.x_); // check if elements were deep copied
+        EXPECT_TRUE(exp.x != exp.x_);  // check if elements were deep copied
 
         exp.reward = (obs_0.reward + obs_1.reward) / 2.;
         exp.done = environment->is_done();
@@ -172,22 +178,22 @@ class ActorFixture : public testing::Test
         Net* net;
         torch::optim::Optimizer* optim;
 
-        void SetUp() override {
+        void SetUp() override
+        {
             net = new Net(10, 2, 10, 1);
             optim = new torch::optim::Adam(net->parameters(), 1e-3);
-            actor = new Actor(net, optim, 1); // TODO entropy
+            actor = new Actor(net, optim, 1);  // TODO(redvinaa) Figure out entropy
         }
 
-        void TearDown() override {
+        void TearDown() override
+        {
             delete net;
             delete optim;
             delete actor;
         }
 };
 
-TEST_F(ActorFixture, testConstructor)
-{
-}
+TEST_F(ActorFixture, testConstructor) {}
 
 
 int main(int argc, char **argv)

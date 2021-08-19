@@ -1,7 +1,11 @@
+// Copyright 2021 Reda Vince
+
 #include "mapf_environment/environment.h"
 #include "mapf_environment/EnvStep.h"
 #include "mapf_environment/Observation.h"
 #include <iostream>
+#include <string>
+#include <vector>
 #include <opencv2/opencv.hpp>
 #include <ros/package.h>
 #include <gtest/gtest.h>
@@ -12,13 +16,15 @@ class EnvironmentFixture : public testing::Test
     protected:
         Environment* environment;
 
-        void SetUp() override {
+        void SetUp() override
+        {
             std::string pkg_path = ros::package::getPath("mapf_environment");
             std::string image_path = pkg_path + "/maps/test_4x4.jpg";
             environment = new Environment(image_path, /*physics_step_size=*/0.01, /*step_multiply/*/1);
         }
 
-        void TearDown() override {
+        void TearDown() override
+        {
             delete environment;
         }
 };
@@ -26,7 +32,7 @@ class EnvironmentFixture : public testing::Test
 TEST_F(EnvironmentFixture, testConstructor)
 {
     EXPECT_FALSE(environment->map_image_raw.empty());
-    EXPECT_TRUE(environment->robot_radius != 0);
+    EXPECT_NE(environment->robot_radius, 0);
     EXPECT_TRUE(environment->map_image.size().height == environment->render_height);
 }
 
@@ -54,7 +60,8 @@ TEST_F(EnvironmentFixture, testPhysics)
 
     point.Set(0.5f, 3.5f);
     hit = false;
-    for (auto it=environment->obstacle_bodies.begin(); it!=environment->obstacle_bodies.end(); it++) {
+    for (auto it=environment->obstacle_bodies.begin(); it != environment->obstacle_bodies.end(); it++)
+    {
         auto body = *it;
         transform = body->GetTransform();
 
@@ -71,7 +78,8 @@ TEST_F(EnvironmentFixture, testPhysics)
 
     point.Set(0.5f, 2.5f);
     hit = false;
-    for (auto it=environment->obstacle_bodies.begin(); it!=environment->obstacle_bodies.end(); it++) {
+    for (auto it=environment->obstacle_bodies.begin(); it != environment->obstacle_bodies.end(); it++)
+    {
         b2Body* body = *it;
         transform = body->GetTransform();
 
@@ -161,17 +169,17 @@ TEST_F(EnvironmentFixture, testContact)
     environment->process_action(0, action);
     environment->process_action(1, action);
 
-    for (int i=0; i<6; i++) {
-
+    for (int i=0; i < 6; i++)
+    {
         environment->step_physics();
         auto find_coll = std::find(environment->collisions.begin(), environment->collisions.end(), true);
-        EXPECT_TRUE(find_coll == environment->collisions.end()); // all false
+        EXPECT_TRUE(find_coll == environment->collisions.end());  // all false
     }
 
     environment->step_physics();
 
     auto find_coll = std::find(environment->collisions.begin(), environment->collisions.end(), false);
-    EXPECT_TRUE(find_coll == environment->collisions.end()); // all true
+    EXPECT_TRUE(find_coll == environment->collisions.end());  // all true
 }
 
 TEST_F(EnvironmentFixture, testMovement)
@@ -237,7 +245,6 @@ TEST_F(EnvironmentFixture, testObservation)
     env_obs.done = environment->done;
     EXPECT_EQ(env_obs.done, true);
     EXPECT_EQ(env_obs.observations[0].reward, 0);
-
 }
 
 TEST_F(EnvironmentFixture, testSerialize)

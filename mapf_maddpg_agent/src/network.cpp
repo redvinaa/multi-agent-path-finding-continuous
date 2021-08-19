@@ -1,3 +1,5 @@
+// Copyright 2021 Reda Vince
+
 #include <mapf_maddpg_agent/network.h>
 #include <string>
 
@@ -7,20 +9,21 @@ Net::Net(int _input_size, int _output_size /* 2 */, int _hidden_layer_nodes /* 1
     hidden_layer_nodes(_hidden_layer_nodes),
     n_hidden_layers(_n_hidden_layers)
 {
-
     assert(input_size > 0);
     assert(output_size > 0);
     assert(hidden_layer_nodes > 0);
     assert(n_hidden_layers > 0);
 
-    for (int i=0; i<n_hidden_layers; i++) {
+    for (int i=0; i < n_hidden_layers; i++)
+    {
         torch::nn::Linear layer = nullptr;
-        if (n_hidden_layers > 1) {
-            if (i == 0) // first layer
+        if (n_hidden_layers > 1)
+        {
+            if (i == 0)  // first layer
                 layer = torch::nn::Linear(input_size, hidden_layer_nodes);
-            else if (i == n_hidden_layers-1) // last layer
+            else if (i == n_hidden_layers-1)  // last layer
                 layer = torch::nn::Linear(hidden_layer_nodes, output_size);
-            else // middle layer
+            else  // middle layer
                 layer = torch::nn::Linear(hidden_layer_nodes, hidden_layer_nodes);
         }
         else
@@ -42,7 +45,7 @@ Net::Net(int _input_size, int _output_size /* 2 */, int _hidden_layer_nodes /* 1
 
 torch::Tensor Net::forward(torch::Tensor x)
 {
-    for (auto& layer: layers)
+    for (auto& layer : layers)
         x = layer->forward(x);
 
     return x;

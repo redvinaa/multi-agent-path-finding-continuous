@@ -1,15 +1,19 @@
+// Copyright 2021 Reda Vince
+
 #include "mapf_environment/types.h"
 #include "mapf_maddpg_agent/types.h"
 #include "mapf_maddpg_agent/critic.h"
 #include "mapf_maddpg_agent/network.h"
 #include "mapf_environment/environment.h"
 #include <torch/torch.h>
+#include <vector>
 
 
 std::vector<float> Critic::serialize_collective(CollectiveObservation coll_obs) const
 {
     std::vector<float> full_obs_actions;
-    for (auto& obs: coll_obs) {
+    for (auto& obs : coll_obs)
+    {
         // single serialized vec
         std::vector<float> serialized_obs = Environment::serialize_observation(obs);
 
@@ -35,7 +39,7 @@ Value Critic::get_value(CollectiveObservation coll_obs) const
 std::vector<Value> Critic::get_value(std::vector<CollectiveObservation> coll_obs) const
 {
     std::vector<Value> values;
-    for (int i=0; i<coll_obs.size(); i++)
+    for (int i=0; i < coll_obs.size(); i++)
         values.push_back(get_value(coll_obs[i]));
 
     return values;
@@ -55,12 +59,13 @@ float Critic::train(std::vector<Experience> experiences)
     torch::Tensor x__t = torch::empty({number_of_exp, number_of_agents * obs_size}, torch::kF32);
     torch::Tensor d_t = torch::empty({number_of_exp, 1}, torch::kF32);
 
-    for (int i=0; i<experiences.size(); i++) {
+    for (int i=0; i < experiences.size(); i++)
+    {
         auto exp = experiences[i];
         x_t[i]   = torch::tensor(serialize_collective(exp.x));
         r_t[i]   = exp.reward;
         x__t[i]  = torch::tensor(serialize_collective(exp.x_));
-        d_t[i]   = (int)exp.done;
+        d_t[i]   = static_cast<int>(exp.done);
     }
 
     torch::Tensor V_x  = net->forward(x_t);

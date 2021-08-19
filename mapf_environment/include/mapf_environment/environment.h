@@ -1,4 +1,7 @@
-#pragma once
+// Copyright 2021 Reda Vince
+
+#ifndef MAPF_ENVIRONMENT_ENVIRONMENT_H
+#define MAPF_ENVIRONMENT_ENVIRONMENT_H
 
 // ros datatype headers
 #include "mapf_environment/EnvStep.h"
@@ -46,6 +49,7 @@ class Environment
             goal_reaching_reward, collision_reward, step_reward, episode_sim_time;
         std::string map_path;
         int render_height, laser_nrays, step_multiply, number_of_agents;
+        unsigned int seed;
         cv::Mat map_image_raw, map_image, rendered_image;
         cv::Scalar color;
 
@@ -146,22 +150,24 @@ class Environment
          * \param _goal_reaching_reward Reward for reaching the goal (only if all the other agents reach their goal too)
          * \param _collision_reward Added reward in the case of a collision
          * \param _step_reward Reward added in every step, except when the goal is reached
+         * \param _seed Seed to generate random numbers
          * \sa init_map(), init_physics()
          */
         Environment(std::string _map_path,
-            float _physics_step_size=0.01,
-            int _step_multiply=5,
-            float _laser_max_angle=45.*M_PI/180.,
-            float _laser_max_dist=10.,
-            float _robot_diam=0.8,
-            int _velocity_iterations=6,
-            int _position_iterations=2,
-            int _render_height=700,
-            int _laser_nrays=10,
-            bool _draw_laser=false,
-            float _goal_reaching_reward=0.,
-            float _collision_reward=-1.,
-            float _step_reward=-1.);
+            float        _physics_step_size    = 0.01,
+            int          _step_multiply        = 5,
+            float        _laser_max_angle      = 45.*M_PI/180.,
+            float        _laser_max_dist       = 10.,
+            float        _robot_diam           = 0.8,
+            int          _velocity_iterations  = 6,
+            int          _position_iterations  = 2,
+            int          _render_height        = 700,
+            int          _laser_nrays          = 10,
+            bool         _draw_laser           = false,
+            float        _goal_reaching_reward = 0.,
+            float        _collision_reward     = -1.,
+            float        _step_reward          = -1.,
+            unsigned int _seed                 = 0);
 
         /*! \brief Set done=false, generate new starting positions and goals for all agents
          */
@@ -189,7 +195,7 @@ class Environment
          *
          * \return The rendered image
          */
-        cv::Mat render(bool show=true, int wait=0);
+        cv::Mat render(bool show = true, int wait = 0);
 
         /* \brief Add actions, get observations, rewards and done
          *
@@ -245,3 +251,5 @@ class Environment
          */
         static Observation deserialize_observation(std::vector<float> obs);
 };
+
+#endif  // MAPF_ENVIRONMENT_ENVIRONMENT_H

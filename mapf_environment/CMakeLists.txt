@@ -10,8 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   message_generation
-  # cv_bridge
   image_transport
+  roslint
 )
 
 find_package(OpenCV 4 REQUIRED)
@@ -80,3 +80,6 @@ install(DIRECTORY include/${PROJECT_NAME}/
 # testing
 catkin_add_gtest(${PROJECT_NAME}-test test/test_environment.cpp)
 target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
+
+# linting
+roslint_cpp()

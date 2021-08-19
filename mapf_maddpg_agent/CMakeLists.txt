@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   message_generation
+  roslint
 )
 
 find_package(Torch REQUIRED)
@@ -84,3 +85,6 @@ install(DIRECTORY include/${PROJECT_NAME}/
 
 catkin_add_gtest(${PROJECT_NAME}-test test/test_maddpg.cpp)
 target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
+
+# linting
+roslint_cpp()

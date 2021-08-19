@@ -1,3 +1,5 @@
+// Copyright 2021 Reda Vince
+
 // ros datatype headers
 #include <geometry_msgs/Twist.h>
 #include <mapf_environment/Observation.h>
@@ -20,25 +22,25 @@
 
 
 Environment::Environment(std::string _map_path,
-    float _physics_step_size /* 0.01 */,
-    int _step_multiply /* 5 */,
-    float _laser_max_angle /* 45.*M_PI/180. */,
-    float _laser_max_dist /* 10. */,
-    float _robot_diam /* 0.8 */,
-    int _velocity_iterations /* 6 */,
-    int _position_iterations /* 2 */,
-    int _render_height /* 700 */,
-    int _laser_nrays /* 10 */,
-    bool _draw_laser /* false */,
-    float _goal_reaching_reward /* 0. */,
-    float _collision_reward /* -1. */,
-    float _step_reward /* -1. */):
+    float        _physics_step_size /* 0.01 */,
+    int          _step_multiply /* 5 */,
+    float        _laser_max_angle /* 45.*M_PI/180. */,
+    float        _laser_max_dist /* 10. */,
+    float        _robot_diam /* 0.8 */,
+    int          _velocity_iterations /* 6 */,
+    int          _position_iterations /* 2 */,
+    int          _render_height /* 700 */,
+    int          _laser_nrays /* 10 */,
+    bool         _draw_laser /* false */,
+    float        _goal_reaching_reward /* 0. */,
+    float        _collision_reward /* -1. */,
+    float        _step_reward /* -1. */,
+    unsigned int _seed /* 0 */):
         gravity(0, 0),
         world(gravity),
         number_of_agents(0),
         done(true)
 {
-
     map_path             = _map_path;
     physics_step_size    = _physics_step_size;
     step_multiply        = _step_multiply;
@@ -53,10 +55,10 @@ Environment::Environment(std::string _map_path,
     goal_reaching_reward = _goal_reaching_reward;
     collision_reward     = _collision_reward;
     step_reward          = _step_reward;
+    seed                 = _seed;
 
-    srand(time(NULL));
     robot_radius = robot_diam/2;
-    init_map(); // load map before physics
+    init_map();  // load map before physics
     init_physics();
 }
 
@@ -67,11 +69,11 @@ void Environment::init_map(void)
 
     map_width = map_image_raw.size().width;
     map_height = map_image_raw.size().height;
-    scale_factor = (float)render_height / map_height;
+    scale_factor = static_cast<float>(render_height) / map_height;
 
     cv::resize(map_image_raw, map_image, cv::Size(), scale_factor, scale_factor, cv::INTER_AREA);
     cv::cvtColor(map_image, map_image, cv::COLOR_GRAY2BGR);
-    map_image.copyTo(rendered_image); // set size of rendered image
+    map_image.copyTo(rendered_image);  // set size of rendered image
 }
 
 void Environment::init_physics(void)
@@ -104,11 +106,14 @@ void Environment::init_physics(void)
     ground->CreateFixture(&sd);
 
     // create static obstacles
-    for(int row = 0; row < map_image_raw.rows; ++row) {
+    for (int row = 0; row < map_image_raw.rows; ++row)
+    {
         uchar* p = map_image_raw.ptr(row);
-        for(int col = 0; col < map_image_raw.cols; ++col) {
+        for (int col = 0; col < map_image_raw.cols; ++col)
+        {
             int pixel_value = *p;
-            if (pixel_value < 255/2) {
+            if (pixel_value < 255/2)
+            {
                 // add obstacle
                 b2BodyDef bd;
                 bd.type = b2_staticBody;
@@ -126,45 +131,53 @@ void Environment::init_physics(void)
 
                 obstacle_bodies.push_back(obst);
             }
-            *p++; //points to each pixel value in turn assuming a CV_8UC1 greyscale image 
+            p++;  // points to each pixel value in turn assuming a CV_8UC1 greyscale image
         }
-    }   
+    }
 }
 
 int Environment::generate_empty_index() const
 {
-    int num_index = map_image_raw.size().width * map_image_raw.size().height; // number of (flattened) indices on the grid map
+    // number of (flattened) indices on the grid map
+    int num_index = map_image_raw.size().width * map_image_raw.size().height;
     std::vector<int> map_indices;
     map_indices.resize(num_index);
-    for (int i=0; i<num_index; i++) {
+    for (int i=0; i < num_index; i++)
+    {
         map_indices[i] = i;
     }
 
     std::random_shuffle(map_indices.begin(), map_indices.end());
 
-    for (auto it = map_indices.begin(); it!=map_indices.end(); it++) {
+    for (auto it = map_indices.begin(); it != map_indices.end(); it++)
+    {
         int index = *it;
 
         // get position from index
         int row = index / map_image_raw.size().width;
-        int col = index - row * map_image_raw.size().width; // integer division
-        float x_pos = col + 0.5; // center of cell
+        int col = index - row * map_image_raw.size().width;  // integer division
+        float x_pos = col + 0.5;  // center of cell
         float y_pos = map_height - row - 0.5;
         b2Vec2 index_position(x_pos, y_pos);
 
         // check if cell has a wall
-        if ((int)map_image_raw.at<unsigned char>(row, col) < 255/2) continue;
+        if (static_cast<int>(map_image_raw.at<unsigned char>(row, col) < 255/2))
+            continue;
 
         // check if any agent is near
         bool somethings_near = false;
-        for (auto& agent: agent_bodies) {
-            if ((agent->GetPosition() - index_position).Length() < robot_diam) {
+        for (auto& agent : agent_bodies)
+        {
+            if ((agent->GetPosition() - index_position).Length() < robot_diam)
+            {
                 somethings_near = true;
                 break;
             }
         }
-        for (auto& goal: goal_positions) {
-            if ((goal - index_position).Length() < robot_diam) {
+        for (auto& goal : goal_positions)
+        {
+            if ((goal - index_position).Length() < robot_diam)
+            {
                 somethings_near = true;
                 break;
             }
@@ -185,7 +198,7 @@ void Environment::reset()
     while (number_of_agents > 0)
         remove_agent(number_of_agents-1);
 
-    for (int i=0; i<number_of_agents_; i++)
+    for (int i=0; i < number_of_agents_; i++)
         add_agent();
 }
 
@@ -199,7 +212,7 @@ int Environment::add_agent()
     // generate random starting position
     int index = generate_empty_index();
     int row = index / map_image_raw.size().width;
-    int col = index - row * map_image_raw.size().width; // integer division
+    int col = index - row * map_image_raw.size().width;  // integer division
     float x_pos = col + 0.5;
     float y_pos = map_height - row - 0.5;
     bodyDef.position.Set(x_pos, y_pos);
@@ -221,15 +234,15 @@ int Environment::add_agent()
     // generate random goal position
     index = generate_empty_index();
     row = index / map_image_raw.size().width;
-    col = index - row * map_image_raw.size().width; // integer division
+    col = index - row * map_image_raw.size().width;  // integer division
     x_pos = col + 0.5;
     y_pos = map_height - row - 0.5;
     goal_positions.push_back(b2Vec2(x_pos, y_pos));
 
     // generate random color for agent
-    int b = (float)rand() / (float)RAND_MAX * 255;
-    int r = (float)rand() / (float)RAND_MAX * 255;
-    int g = (float)rand() / (float)RAND_MAX * 255;
+    int b = static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX) * 255;
+    int r = static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX) * 255;
+    int g = static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX) * 255;
     cv::Scalar agent_color(b, r, g);
     agent_colors.push_back(agent_color);
 
@@ -240,7 +253,7 @@ int Environment::add_agent()
     sensor_msgs::LaserScan scan;
     scan.ranges.resize(laser_nrays);
     laser_scans.push_back(scan);
-    
+
     collisions.push_back(false);
     agent_lin_vel.push_back(0);
     agent_ang_vel.push_back(0);
@@ -269,9 +282,10 @@ void Environment::step_physics()
     if (done == true)
         throw std::runtime_error("Attempted to step environment that is finished. Call reset() first");
 
-    for (int j=0; j<step_multiply; j++) {
-
-        for (int i=0; i<agent_bodies.size(); i++) {
+    for (int j=0; j < step_multiply; j++)
+    {
+        for (int i=0; i < agent_bodies.size(); i++)
+        {
             b2Body* agent = agent_bodies[i];
             float angle = agent->GetAngle();
 
@@ -282,7 +296,8 @@ void Environment::step_physics()
         world.Step(physics_step_size, velocity_iterations, position_iterations);
         episode_sim_time += physics_step_size;
 
-        for (int i=0; i<agent_bodies.size(); i++) {
+        for (int i=0; i < agent_bodies.size(); i++)
+        {
             b2Body* agent = agent_bodies[i];
             float angle = agent->GetAngle();
 
@@ -292,7 +307,8 @@ void Environment::step_physics()
 
             pt_from.x = robot_radius * std::cos(angle) + position.x;
             pt_from.y = robot_radius * std::sin(angle) + position.y;
-            for (int j=0; j<laser_nrays; j++) {
+            for (int j=0; j < laser_nrays; j++)
+            {
                 float laser_angle = angle - laser_max_angle + j * laser_max_angle * 2 / laser_nrays;
                 pt_to.x = laser_max_dist * std::cos(laser_angle) + pt_from.x;
                 pt_to.y = laser_max_dist * std::sin(laser_angle) + pt_from.y;
@@ -301,15 +317,16 @@ void Environment::step_physics()
                 world.RayCast(&callback, pt_from, pt_to);
 
                 float dist = laser_max_dist;
-                if (callback.hit) {
+                if (callback.hit)
                     dist = (pt_from - callback.point).Length();
-                }
+
                 laser_scans[i].ranges[j] = dist;
             }
 
             // check collisions
             bool hit = false;
-            for (b2ContactEdge* ce = agent->GetContactList(); ce; ce = ce->next) {
+            for (b2ContactEdge* ce = agent->GetContactList(); ce; ce = ce->next)
+            {
                 hit = ce->contact->IsTouching();
                 if (hit)
                     break;
@@ -320,15 +337,18 @@ void Environment::step_physics()
 
         // check if all the agents reached their goal
         bool check_done = true;
-        for (int i=0; i<agent_bodies.size(); i++) {
+        for (int i=0; i < agent_bodies.size(); i++)
+        {
             b2Body* agent = agent_bodies[i];
-            if ((agent->GetPosition() - goal_positions[i]).Length() > robot_diam) {
+            if ((agent->GetPosition() - goal_positions[i]).Length() > robot_diam)
+            {
                 check_done = false;
                 break;
             }
         }
 
-        if (check_done) {
+        if (check_done)
+        {
             done = true;
             break;
         }
@@ -340,7 +360,8 @@ cv::Mat Environment::render(bool show, int wait)
     rendered_image = cv::Scalar(255, 255, 255);
 
     // draw obstacles
-    for (int i=0; i<obstacle_bodies.size(); i++) {
+    for (int i=0; i < obstacle_bodies.size(); i++)
+    {
         b2Vec2 pos = obstacle_bodies[i]->GetPosition();
         cv::Point pt1((pos.x-0.5)*scale_factor, render_height - (pos.y-0.5)*scale_factor);
         cv::Point pt2((pos.x+0.5)*scale_factor, render_height - (pos.y+0.5)*scale_factor);
@@ -348,7 +369,8 @@ cv::Mat Environment::render(bool show, int wait)
     }
 
     // draw goals
-    for (int i=0; i<goal_positions.size(); i++) {
+    for (int i=0; i < goal_positions.size(); i++)
+    {
         b2Vec2 position = goal_positions[i];
 
         // big circle
@@ -362,7 +384,8 @@ cv::Mat Environment::render(bool show, int wait)
     int thickness = 3;
     int base_line = 0;
     auto scale = cv::getFontScaleFromHeight(font, inner_radius*scale_factor, thickness);
-    for (int i=0; i<agent_bodies.size(); i++) {
+    for (int i=0; i < agent_bodies.size(); i++)
+    {
         b2Vec2 position = agent_bodies[i]->GetPosition();
         float angle = agent_bodies[i]->GetAngle();
 
@@ -381,19 +404,22 @@ cv::Mat Environment::render(bool show, int wait)
 
         const cv::Point* ppt[1] = { triangle[0] };
         int npt[] = {3};
-        if (collisions[i]) {
+        if (collisions[i])
+        {
             // arrow
             cv::fillPoly(rendered_image, ppt, npt, 1, agent_colors[i]);
 
             // small circle
-            cv::circle(rendered_image, center, (int)(inner_radius*scale_factor), agent_colors[i], -1);
+            cv::circle(rendered_image, center, static_cast<int>(inner_radius*scale_factor), agent_colors[i], -1);
         }
-        else {
+        else
+        {
             // arrow
             cv::fillPoly(rendered_image, ppt, npt, 1, cv::Scalar(255, 255, 255));
 
             // small circle
-            cv::circle(rendered_image, center, (int)(inner_radius*scale_factor), cv::Scalar(255, 255, 255), -1);
+            cv::circle(rendered_image, center, static_cast<int>(inner_radius*scale_factor),
+                cv::Scalar(255, 255, 255), -1);
         }
 
         // number
@@ -403,11 +429,13 @@ cv::Mat Environment::render(bool show, int wait)
         cv::putText(rendered_image, std::to_string(i), textSize, font, scale, cv::Scalar(0, 0, 0), thickness);
 
         // laser scans
-        if (draw_laser) {
+        if (draw_laser)
+        {
             cv::Point pt_from, pt_to;
             pt_from.x = robot_radius * scale_factor * std::cos(-angle) + center.x;
             pt_from.y = robot_radius * scale_factor * std::sin(-angle) + center.y;
-            for (int j=0; j<laser_nrays; j++) {
+            for (int j=0; j < laser_nrays; j++)
+            {
                 float laser_angle = angle - laser_max_angle + j * laser_max_angle * 2 / laser_nrays;
                 pt_to.x = laser_scans[i].ranges[j] * scale_factor * std::cos(-laser_angle) + pt_from.x;
                 pt_to.y = laser_scans[i].ranges[j] * scale_factor * std::sin(-laser_angle) + pt_from.y;
@@ -427,14 +455,14 @@ EnvStep Environment::step(std::vector<Action> actions)
     EnvStep out;
 
     // process actions
-    for (int i=0; i<number_of_agents; i++)
+    for (int i=0; i < number_of_agents; i++)
         process_action(i, actions[i]);
 
     // step_physics
     step_physics();
 
     // get observations
-    for (int i=0; i<number_of_agents; i++)
+    for (int i=0; i < number_of_agents; i++)
         out.observations.push_back(get_observation(i));
 
     return out;
@@ -474,9 +502,12 @@ Observation Environment::get_observation(int agent_index)
 
     // reward and done
     obs.reward = 0;
-    if (done) {
+    if (done)
+    {
         obs.reward = goal_reaching_reward;
-    } else {
+    }
+    else
+    {
         obs.reward = step_reward;
         if (collisions[agent_index]) obs.reward += collision_reward;
     }
@@ -547,7 +578,7 @@ Observation Environment::deserialize_observation(std::vector<float> obs)
     deserialized.goal_pose.y = obs[6];
 
     // scan
-    deserialized.scan.ranges.insert(deserialized.scan.ranges.begin(), obs.begin()+7, obs.end()); 
+    deserialized.scan.ranges.insert(deserialized.scan.ranges.begin(), obs.begin()+7, obs.end());
 
     return deserialized;
 }

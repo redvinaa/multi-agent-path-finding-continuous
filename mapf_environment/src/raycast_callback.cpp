@@ -1,3 +1,5 @@
+// Copyright 2021 Reda Vince
+
 #include <mapf_environment/raycast_callback.h>
 
 RayCastClosestCallback::RayCastClosestCallback()
@@ -5,7 +7,8 @@ RayCastClosestCallback::RayCastClosestCallback()
     hit = false;
 }
 
-float RayCastClosestCallback::ReportFixture(b2Fixture* fixture, const b2Vec2& point, const b2Vec2& normal, float fraction)
+float RayCastClosestCallback::ReportFixture(b2Fixture* fixture,
+    const b2Vec2& point, const b2Vec2& normal, float fraction)
 {
     b2Body* body = fixture->GetBody();
 
