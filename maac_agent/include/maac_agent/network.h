@@ -11,12 +11,15 @@
 struct Net : torch::nn::Module
 {
     /*! \brief Create neural net with the given parameters
+     *
+     * \param _batch_norm Perform batch normalization on input
      */
     explicit Net(
         int _input_size,
-        int _output_size = 2,
+        int _output_size        = 2,
+        bool _batch_norm        = true,
         int _hidden_layer_nodes = 10,
-        int _n_hidden_layers = 1);
+        int _n_hidden_layers    = 1);
 
     /*! \brief Override forward() method
      *
@@ -32,6 +35,8 @@ struct Net : torch::nn::Module
     int output_size;
     int hidden_layer_nodes;
     int n_hidden_layers;
+    bool batch_norm;
+    torch::nn::BatchNorm1d batch_norm_layer;
 };
 
-#endif  // MAPF_MADDPG_AGENT_NETWORK_H
+#endif  // MAAC_AGENT_NETWORK_H

@@ -18,7 +18,7 @@ TEST(NetworkTest, testLossDecreases)
     // Test if parameters are changed during training.
     // Networks with different numbers of hidden layers are tested.
 
-    Net net(10, 2, 10, 3);
+    Net net(10, 2, true, 10, 3);
 
     auto params_before = net.parameters();
     for (auto& param_group : params_before)
@@ -89,7 +89,7 @@ class CriticFixture : public testing::Test
 
             int input_size = number_of_agents * environment->get_observation_size();
 
-            net = new Net(input_size, 1, 10, 1);
+            net = new Net(input_size, 1, false, 10, 1);
             optim = new torch::optim::Adam(net->parameters(), /*lr=*/1e-3);
             critic = new Critic(net, optim, 0.9);
         }
@@ -180,7 +180,7 @@ class ActorFixture : public testing::Test
 
         void SetUp() override
         {
-            net = new Net(10, 2, 10, 1);
+            net = new Net(10, 2, false, 10, 1);
             optim = new torch::optim::Adam(net->parameters(), 1e-3);
             actor = new Actor(net, optim, 1);  // TODO(redvinaa) Figure out entropy
         }

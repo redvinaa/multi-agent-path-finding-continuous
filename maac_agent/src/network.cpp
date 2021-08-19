@@ -3,16 +3,29 @@
 #include <maac_agent/network.h>
 #include <string>
 
-Net::Net(int _input_size, int _output_size /* 2 */, int _hidden_layer_nodes /* 10 */, int _n_hidden_layers /* 1 */):
+Net::Net(
+        int _input_size,
+        int _output_size /* 2 */,
+        bool _batch_norm /* true */,
+        int _hidden_layer_nodes /* 10 */,
+        int _n_hidden_layers /* 1 */):
     input_size(_input_size),
     output_size(_output_size),
     hidden_layer_nodes(_hidden_layer_nodes),
-    n_hidden_layers(_n_hidden_layers)
+    n_hidden_layers(_n_hidden_layers),
+    batch_norm(_batch_norm),
+    batch_norm_layer(nullptr)
 {
     assert(input_size > 0);
     assert(output_size > 0);
     assert(hidden_layer_nodes > 0);
     assert(n_hidden_layers > 0);
+
+    if (batch_norm)
+    {
+        batch_norm_layer = torch::nn::BatchNorm1d(input_size);
+        register_module("Batch_norm", batch_norm_layer);
+    }
 
     for (int i=0; i < n_hidden_layers; i++)
     {
@@ -45,6 +58,9 @@ Net::Net(int _input_size, int _output_size /* 2 */, int _hidden_layer_nodes /* 1
 
 torch::Tensor Net::forward(torch::Tensor x)
 {
+    if (batch_norm)
+        x = batch_norm_layer(x);
+
     for (auto& layer : layers)
         x = layer->forward(x);
 
