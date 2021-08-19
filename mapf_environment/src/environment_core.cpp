@@ -422,51 +422,68 @@ cv::Mat Environment::render(bool show, int wait)
     return rendered_image;
 }
 
+mapf_environment::EnvStep Environment::step(std::vector<geometry_msgs::Twist> actions)
+{
+    mapf_environment::EnvStep out;
+
+    // process actions
+    for (int i=0; i<number_of_agents; i++)
+        process_action(i, actions[i]);
+
+    // step_physics
+    step_physics();
+
+    // get observations
+    for (int i=0; i<number_of_agents; i++)
+        out.observations.push_back(get_observation(i));
+
+    return out;
+}
+
 void Environment::process_action(int agent_index, geometry_msgs::Twist action)
 {
     agent_lin_vel[agent_index] = action.linear.x;
     agent_ang_vel[agent_index] = action.angular.z;
 }
 
-mapf_environment::EnvStep Environment::get_observation(int agent_index)
+mapf_environment::Observation Environment::get_observation(int agent_index)
 {
     b2Body* agent = agent_bodies[agent_index];
-    mapf_environment::EnvStep env_obs;
+    mapf_environment::Observation obs;
 
     // scan
-    env_obs.observation.scan = laser_scans[agent_index];
+    obs.scan = laser_scans[agent_index];
 
     // position
     b2Vec2 position = agent_bodies[agent_index]->GetPosition();
     float yaw = agent->GetAngle();
-    env_obs.observation.agent_pose.x = position.x;
-    env_obs.observation.agent_pose.y = position.y;
-    env_obs.observation.agent_pose.z = yaw;
+    obs.agent_pose.x = position.x;
+    obs.agent_pose.y = position.y;
+    obs.agent_pose.z = yaw;
 
     // twist
     b2Vec2 vel = agent->GetLinearVelocity();
     float ang_vel = agent->GetAngularVelocity();
-    env_obs.observation.agent_twist.x = vel.x;
-    env_obs.observation.agent_twist.y = vel.y;
-    env_obs.observation.agent_twist.z = ang_vel;
+    obs.agent_twist.x = vel.x;
+    obs.agent_twist.y = vel.y;
+    obs.agent_twist.z = ang_vel;
 
     // goal pose
-    env_obs.observation.goal_pose.x = goal_positions[agent_index].x;
-    env_obs.observation.goal_pose.y = goal_positions[agent_index].y;
+    obs.goal_pose.x = goal_positions[agent_index].x;
+    obs.goal_pose.y = goal_positions[agent_index].y;
 
     // reward and done
-    env_obs.reward = 0;
-    env_obs.done = done;
+    obs.reward = 0;
     if (done) {
-        env_obs.reward = goal_reaching_reward;
+        obs.reward = goal_reaching_reward;
     } else {
-        env_obs.reward = step_reward;
-        if (collisions[agent_index]) env_obs.reward += collision_reward;
+        obs.reward = step_reward;
+        if (collisions[agent_index]) obs.reward += collision_reward;
     }
 
     collisions[agent_index] = false;
 
-    return env_obs;
+    return obs;
 }
 
 bool Environment::is_done()

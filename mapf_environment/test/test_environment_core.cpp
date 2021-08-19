@@ -203,19 +203,18 @@ TEST_F(EnvironmentFixture, testObservation)
     geometry_msgs::Twist action;
     action.linear.x = 1;
     action.angular.z = -0.5;
-    environment->process_action(0, action);
+    std::vector<geometry_msgs::Twist> actions = {action};
 
-    environment->step_physics();
-    mapf_environment::EnvStep env_obs = environment->get_observation(0);
+    mapf_environment::EnvStep env_obs = environment->step(actions);
 
     b2Transform agent_tf_expected = environment->agent_bodies[0]->GetTransform();
-    b2Vec2 agent_pose(env_obs.observation.agent_pose.x, env_obs.observation.agent_pose.y);
+    b2Vec2 agent_pose(env_obs.observations[0].agent_pose.x, env_obs.observations[0].agent_pose.y);
     EXPECT_EQ(agent_pose, agent_tf_expected.p);
 
-    EXPECT_EQ(env_obs.observation.agent_twist.x, 1);
-    EXPECT_EQ(env_obs.observation.agent_twist.y, 0);
-    EXPECT_EQ(env_obs.observation.agent_twist.z, -0.5);
-    EXPECT_EQ(env_obs.reward, -1);
+    EXPECT_EQ(env_obs.observations[0].agent_twist.x, 1);
+    EXPECT_EQ(env_obs.observations[0].agent_twist.y, 0);
+    EXPECT_EQ(env_obs.observations[0].agent_twist.z, -0.5);
+    EXPECT_EQ(env_obs.observations[0].reward, -1);
     EXPECT_EQ(env_obs.done, false);
 
     // test collision reward
@@ -226,16 +225,18 @@ TEST_F(EnvironmentFixture, testObservation)
     environment->step_physics();
 
     EXPECT_TRUE(environment->collisions[0]);
-    env_obs = environment->get_observation(0);
+    env_obs.observations[0] = environment->get_observation(0);
+    env_obs.done = environment->done;
     EXPECT_EQ(env_obs.done, false);
-    EXPECT_EQ(env_obs.reward, -2);
+    EXPECT_EQ(env_obs.observations[0].reward, -2);
 
     // test goal reaching reward
     environment->agent_bodies[0]->SetTransform(environment->goal_positions[0], 0);
     environment->step_physics();
-    env_obs = environment->get_observation(0);
+    env_obs.observations[0] = environment->get_observation(0);
+    env_obs.done = environment->done;
     EXPECT_EQ(env_obs.done, true);
-    EXPECT_EQ(env_obs.reward, 0);
+    EXPECT_EQ(env_obs.observations[0].reward, 0);
 
 }
 
@@ -244,8 +245,9 @@ TEST_F(EnvironmentFixture, testSerialize)
     environment->reset();
     environment->add_agent();
     auto obs = environment->get_observation(0);
-    auto ser_obs = Environment::serialize_observation(obs.observation);
-    EXPECT_EQ(obs.observation, Environment::deserialize_observation(ser_obs));
+    obs.reward = 0;
+    auto ser_obs = Environment::serialize_observation(obs);
+    EXPECT_EQ(obs, Environment::deserialize_observation(ser_obs));
 }
 
 

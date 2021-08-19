@@ -48,6 +48,73 @@ class Environment
         cv::Mat map_image_raw, map_image, rendered_image;
         cv::Scalar color;
 
+        /*! \brief Load map
+         *
+         * Load image at path _map_path.
+         * Image coordinates use the OpenCV convention.
+         */
+        void init_map(void);
+
+        /*! \brief Create box2d physics world, create boundaries and add obstacles based on the map image
+         *
+         * Physics coorinates use the Box2d convention.
+         */
+        void init_physics(void);
+
+        /*! \brief Randomly find an empty place on the map (no obstacles and no other agents nearby)
+         *
+         * \return The flattened (row*image_width + col) index of the cell that is found to be free.
+         * \exception std::runtime_error Raised if no free cells are found
+         */
+        int generate_empty_index(void) const;
+
+        /*! \brief Step physics, calculate scans, collisions
+         *
+         * First the internally stored linear and angular velocities are set.
+         * Then, the physics simulation step is calculated.
+         * Finally, the observations are updated:
+         *   - laser_scans
+         *   - collisions
+         *
+         * After that, the environment checks if all the agents reached their
+         * goals. If yes, then done=true is set.
+         * However, collisions are not set to false here, so as not to miss
+         * any. It is set to false after an observation is queried for the agent.
+         * \return Index of the new agent (starting from 0)
+         * \exception std::runtime_error Raised if done=true
+         * \sa get_observation()
+         */
+        void step_physics();
+
+        /*! \brief Save the linear and angular velocity of the
+         * given agent
+         *
+         * However, the velocities are set only in the step_physics()
+         * \sa step_physics()
+         */
+        void process_action(int agent_index, geometry_msgs::Twist action);
+
+        /*! \brief Calculate the observations for the given agent
+         *
+         * The observations are the following:
+         *   - sensor_msgs/LaserScan scan
+         *   - geometry_msgs/Point agent_pose  # linear x, y, and angle z
+         *   - geometry_msgs/Point agent_twist # linear x, and angle z
+         *   - geometry_msgs/Point goal_pose # x, y only
+         *   - float32 reward
+         *   - bool done
+         *
+         * After the observation for the given agent is queried,
+         * the collision for that agent is set to false,
+         * so it is important that this function is called at most once
+         * per physics step. Also, the collisions are only set false here,
+         * but not in step_physics()
+         *
+         * \sa step_physics()
+         * \return The calculated observation
+         */
+        mapf_environment::Observation get_observation(int agent_index);
+
         FRIEND_TEST(EnvironmentCore, constructorRuns);
         FRIEND_TEST(EnvironmentFixture, testConstructor);
         FRIEND_TEST(EnvironmentFixture, testMap);
@@ -58,6 +125,8 @@ class Environment
         FRIEND_TEST(EnvironmentFixture, testMovement);
         FRIEND_TEST(EnvironmentFixture, testObservation);
         FRIEND_TEST(EnvironmentFixture, testSerialize);
+        FRIEND_TEST(CriticFixture,      testGetValues);
+        FRIEND_TEST(CriticFixture,      testTraining);
 
     public:
         /*! \brief Sets the default parameters, and calls init_map() and init_physics()
@@ -93,26 +162,6 @@ class Environment
             float _collision_reward=-1.,
             float _step_reward=-1.);
 
-        /*! \brief Load map
-         *
-         * Load image at path _map_path.
-         * Image coordinates use the OpenCV convention.
-         */
-        void init_map(void);
-
-        /*! \brief Create box2d physics world, create boundaries and add obstacles based on the map image
-         *
-         * Physics coorinates use the Box2d convention.
-         */
-        void init_physics(void);
-
-        /*! \brief Randomly find an empty place on the map (no obstacles and no other agents nearby)
-         *
-         * \return The flattened (row*image_width + col) index of the cell that is found to be free.
-         * \exception std::runtime_error Raised if no free cells are found
-         */
-        int generate_empty_index(void) const;
-
         /*! \brief Set done=false, generate new starting positions and goals for all agents
          */
         void reset();
@@ -131,24 +180,6 @@ class Environment
          */
         void remove_agent(int agent_index);
 
-        /*! \brief Remove the given agent and its goal from the simulation
-         *
-         * First the internally stored linear and angular velocities are set.
-         * Then, the physics simulation step is calculated.
-         * Finally, the observations are updated:
-         *   - laser_scans
-         *   - collisions
-         *
-         * After that, the environment checks if all the agents reached their
-         * goals. If yes, then done=true is set.
-         * However, collisions are not set to false here, so as not to miss
-         * any. It is set to false after an observation is queried for the agent.
-         * \return Index of the new agent (starting from 0)
-         * \exception std::runtime_error Raised if done=true
-         * \sa get_observation()
-         */
-        void step_physics();
-
         /*! \brief Render the obstacles, agents, goals, optionally
          * the raycasts, and show collisions as well
          *
@@ -159,34 +190,11 @@ class Environment
          */
         cv::Mat render(bool show=true, int wait=0);
 
-        /*! \brief Save the linear and angular velocity of the
-         * given agent
+        /* \brief Add actions, get observations, rewards and done
          *
-         * However, the velocities are set only in the step_physics()
-         * \sa step_physics()
+         * Based on OpenAI Gym API
          */
-        void process_action(int agent_index, geometry_msgs::Twist action);
-
-        /*! \brief Calculate the observations for the given agent
-         *
-         * The observations are the following:
-         *   - sensor_msgs/LaserScan scan
-         *   - geometry_msgs/Point agent_pose  # linear x, y, and angle z
-         *   - geometry_msgs/Point agent_twist # linear x, and angle z
-         *   - geometry_msgs/Point goal_pose # x, y only
-         *   - float32 reward
-         *   - bool done
-         *
-         * After the observation for the given agent is queried,
-         * the collision for that agent is set to false,
-         * so it is important that this function is called at most once
-         * per physics step. Also, the collisions are only set false here,
-         * but not in step_physics()
-         *
-         * \sa step_physics()
-         * \return The calculated observation
-         */
-        mapf_environment::EnvStep get_observation(int agent_index);
+        mapf_environment::EnvStep step(std::vector<geometry_msgs::Twist> actions);
 
         /*! \brief Is the episode over
          */
@@ -213,7 +221,10 @@ class Environment
         int get_observation_size();
 
         /*! \brief Take the Observation structure and
-         * put the relevant data in a float vector
+         * put the relevant data in a float vector (STRIPS REWARD)
+         *
+         * The reward is not serialized, because the reward is not going
+         * to be fed to an ANN, which is the purpose of this function.
          *
          * \return Serialized (vectorized) observation
          *
@@ -222,7 +233,10 @@ class Environment
         static std::vector<float> serialize_observation(mapf_environment::Observation obs);
 
         /*! \brief Take the Observation structure and
-         * put the relevant data in a float vector
+         * put the relevant data in a float vector (REWARD IS EMPTY)
+         *
+         * Because the serialized observation does not contain the reward,
+         * that of the deserialized one is set to zero.
          *
          * \return Deserialized (mapf_environment::Observation type) observation
          *

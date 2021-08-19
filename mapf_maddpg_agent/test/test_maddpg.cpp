@@ -101,7 +101,7 @@ TEST_F(CriticFixture, testGetValues)
 {
     CollectiveObservation coll_obs;
     for (int i=0; i<number_of_agents; i++)
-        coll_obs.push_back(environment->get_observation(0).observation);
+        coll_obs.push_back(environment->get_observation(0));
 
     float value = critic->get_value(coll_obs);
     EXPECT_TRUE(value != 0.);
@@ -119,13 +119,13 @@ TEST_F(CriticFixture, testTraining)
     std::vector<Experience> experiences;
 
     Experience exp;
-    EnvStep env_obs_0, env_obs_1;
+    Observation obs_0, obs_1;
     Action action;
 
-    env_obs_0 = environment->get_observation(0);
-    env_obs_1 = environment->get_observation(1);
-    exp.x_.push_back(env_obs_0.observation);
-    exp.x_.push_back(env_obs_1.observation);
+    obs_0 = environment->get_observation(0);
+    obs_1 = environment->get_observation(1);
+    exp.x_.push_back(obs_0);
+    exp.x_.push_back(obs_1);
 
     for (int step=0; step<10; step++) {
         exp.x = exp.x_;
@@ -140,21 +140,21 @@ TEST_F(CriticFixture, testTraining)
 
         environment->step_physics();
 
-        env_obs_0 = environment->get_observation(0);
-        env_obs_1 = environment->get_observation(1);
+        obs_0 = environment->get_observation(0);
+        obs_1 = environment->get_observation(1);
 
         exp.x_.clear();
-        exp.x_.push_back(env_obs_0.observation);
-        exp.x_.push_back(env_obs_1.observation);
+        exp.x_.push_back(obs_0);
+        exp.x_.push_back(obs_1);
 
         EXPECT_TRUE(exp.x != exp.x_); // check if elements were deep copied
 
-        exp.reward = (env_obs_0.reward + env_obs_1.reward) / 2.;
-        exp.done = env_obs_0.done;
+        exp.reward = (obs_0.reward + obs_1.reward) / 2.;
+        exp.done = environment->is_done();
 
         experiences.push_back(exp);
 
-        if (env_obs_0.done)
+        if (environment->is_done())
             break;
     }
 

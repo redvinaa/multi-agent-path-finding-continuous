@@ -1,3 +1,2 @@
-mapf_environment/Observation observation
-float32 reward
+mapf_environment/Observation[] observations
 bool done
