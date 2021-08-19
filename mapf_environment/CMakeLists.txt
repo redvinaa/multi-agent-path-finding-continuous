@@ -12,7 +12,6 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   # cv_bridge
   image_transport
-  ddynamic_reconfigure
 )
 
 find_package(OpenCV 4 REQUIRED)
@@ -81,11 +80,12 @@ target_link_libraries(${PROJECT_NAME}
 # )
 
 
-# install
+## Mark executables for installation
 # install(TARGETS ${PROJECT_NAME}_node
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
 
+## Mark libraries for installation
 install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
@@ -96,7 +96,6 @@ install(TARGETS ${PROJECT_NAME}
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
-  PATTERN ".svn" EXCLUDE
 )
 
 
