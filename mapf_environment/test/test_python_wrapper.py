@@ -41,13 +41,13 @@ class TestWrapper(unittest.TestCase):
         # constructor
         env = make_env()
 
-        # reset
-        env.reset()
-
         # add_agent
         self.assertEqual(env.add_agent(), 0)
         self.assertEqual(env.add_agent(), 1)
         self.assertEqual(env.add_agent(), 2)
+
+        # reset
+        env.reset()
 
         # remove_agent
         env.remove_agent(2)

@@ -127,14 +127,15 @@ TEST_F(EnvironmentFixture, testAddAndRemoveAgent)
 TEST_F(EnvironmentFixture, testReset)
 {
     EXPECT_TRUE(environment->done);
+    environment->add_agent();
     environment->reset();
     EXPECT_FALSE(environment->done);
 }
 
 TEST_F(EnvironmentFixture, testContact)
 {
-    environment->reset();
     environment->add_agent();
+    environment->reset();
 
     environment->step_physics();
     EXPECT_FALSE(environment->collisions[0]);
@@ -149,8 +150,8 @@ TEST_F(EnvironmentFixture, testContact)
     EXPECT_TRUE(environment->collisions[0]);
 
     // test collision between agents
-    environment->reset();
     environment->add_agent();
+    environment->reset();
     environment->agent_bodies[0]->SetTransform(b2Vec2(robot_radius+0.1, 4.-robot_radius-0.1), 0);
     environment->goal_positions[0].Set(4.-robot_radius, 4.-robot_radius);
     environment->agent_bodies[1]->SetTransform(b2Vec2(3*robot_radius+0.2, 4.-robot_radius-0.1), M_PI);
@@ -182,8 +183,8 @@ TEST_F(EnvironmentFixture, testContact)
 
 TEST_F(EnvironmentFixture, testMovement)
 {
-    environment->reset();
     environment->add_agent();
+    environment->reset();
 
     Action action;
     action.x = 1;
@@ -203,8 +204,8 @@ TEST_F(EnvironmentFixture, testObservation)
     EXPECT_EQ(environment->collision_reward, -1);
     EXPECT_EQ(environment->goal_reaching_reward, 0);
 
-    environment->reset();
     environment->add_agent();
+    environment->reset();
 
     Action action;
     action.x = 1;
@@ -248,8 +249,8 @@ TEST_F(EnvironmentFixture, testObservation)
 
 TEST_F(EnvironmentFixture, testSerialize)
 {
-    environment->reset();
     environment->add_agent();
+    environment->reset();
     auto obs = environment->get_observation(0);
     obs.reward = 0;
     auto ser_obs = Environment::serialize_observation(obs);

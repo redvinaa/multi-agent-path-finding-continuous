@@ -182,8 +182,13 @@ int Environment::generate_empty_index() const
     throw std::runtime_error("No position could be generated");
 }
 
-void Environment::reset()
+EnvStep Environment::reset()
 {
+    if (number_of_agents < 1)
+    {
+        throw std::runtime_error("Add agents before resetting environment");
+    }
+
     done = false;
     episode_sim_time = 0.;
 
@@ -194,6 +199,14 @@ void Environment::reset()
 
     for (int i=0; i < number_of_agents_; i++)
         add_agent();
+
+    // get observations
+    step_physics();  // no movement, but calculate laser scans
+    EnvStep out;
+    for (int i=0; i < number_of_agents; i++)
+        out.observations.push_back(get_observation(i));
+
+    return out;
 }
 
 

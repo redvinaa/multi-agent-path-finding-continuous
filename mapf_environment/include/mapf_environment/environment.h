@@ -167,8 +167,9 @@ class Environment
             unsigned int _seed                 = 0);
 
         /*! \brief Set done=false, generate new starting positions and goals for all agents
+         * \return First observation
          */
-        void reset();
+        EnvStep reset();
 
         /*! \brief Create an agent with physics, random starting and goal positions
          *
