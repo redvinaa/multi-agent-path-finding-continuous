@@ -349,7 +349,7 @@ void Environment::step_physics()
     }
 }
 
-cv::Mat Environment::render(bool show, int wait)
+cv::Mat Environment::get_rendered_pic()
 {
     rendered_image = cv::Scalar(255, 255, 255);
 
@@ -438,10 +438,13 @@ cv::Mat Environment::render(bool show, int wait)
         }
     }
 
-    cv::imshow("Multi-agent path finding environment", rendered_image);
-    cv::waitKey(wait);
-
     return rendered_image;
+}
+
+void Environment::render(int wait)
+{
+    cv::imshow("Multi-agent path finding environment", get_rendered_pic());
+    cv::waitKey(wait);
 }
 
 EnvStep Environment::step(std::vector<Action> actions)

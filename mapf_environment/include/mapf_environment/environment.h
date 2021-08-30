@@ -184,10 +184,19 @@ class Environment
          */
         void remove_agent(int agent_index);
 
+        /*! \brief Draw the obstacles, agents, goals, optionally
          * the raycasts, and show collisions as well
          *
-         *
+         * \return The drawn image
          */
+        cv::Mat get_rendered_pic();
+
+        /*! \brief Show rendered image of the environment
+         *
+         * \param wait Passed to cv::waitKey (timeout in ms)
+         * \sa get_rendered_pic
+         */
+        void render(int wait = 0);
 
         /* \brief Add actions, get observations, rewards and done
          *

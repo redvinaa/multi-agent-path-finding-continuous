@@ -45,6 +45,16 @@ install(TARGETS ${PROJECT_NAME}_lib
   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
 )
 
+pybind_add_module(mapf_env MODULE src/python_wrapper.cpp)
+target_link_libraries(mapf_env PRIVATE ${PROJECT_NAME}_lib ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES})
+# catkin_install_python(PROGRAMS test/test_python_wrapper.py
+#     DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
+
+## Mark module for installation
+install(TARGETS mapf_env
+  DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+)
+
 ## Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
