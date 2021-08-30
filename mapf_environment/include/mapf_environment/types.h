@@ -16,6 +16,7 @@ struct Point
 /*! \brief Vector to store ranges of the lidar */
 using LaserScan = std::vector<float>;
 
+/*! \brief Data observed by a single agent at every step */
 struct Observation
 {
     /*! \brief x and y stores the position, z the angle of an agent */

@@ -18,7 +18,7 @@ PYBIND11_MODULE(mapf_env, m)
         .def_readwrite("y", &Point::y)
         .def_readwrite("z", &Point::z);
 
-    py::class_<Observation>(m, "Observation")
+    py::class_<Observation>(m, "Observation", "Data observed by a single agent at every step")
         .def_readwrite("agent_pose", &Observation::agent_pose,
             "x and y stores the position, z the angle of an agent")
         .def_readwrite("agent_twist", &Observation::agent_twist,
