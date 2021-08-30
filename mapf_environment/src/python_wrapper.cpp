@@ -36,10 +36,10 @@ PYBIND11_MODULE(mapf_env, m)
 
     py::class_<Environment>(m, "Environment", "Environment for multi-agent path finding simulation")
     .def(py::init<std::string, float, int, float, float, float, int, int, int, int,
-        bool, float, float, float, unsigned int>(),
+        bool, bool, float, float, float, float, unsigned int>(),
         py::arg("_map_path"),
         py::arg("_physics_step_size")    = 0.01,
-        py::arg("_step_multiply")        = 5,
+        py::arg("_step_multiply")        = 10,
         py::arg("_laser_max_angle")      = 45.*M_PI/180.,
         py::arg("_laser_max_dist")       = 10.,
         py::arg("_robot_diam")           = 0.8,
@@ -48,9 +48,11 @@ PYBIND11_MODULE(mapf_env, m)
         py::arg("_render_height")        = 700,
         py::arg("_laser_nrays")          = 10,
         py::arg("_draw_laser")           = false,
+        py::arg("_draw_noisy_pose")      = false,
         py::arg("_goal_reaching_reward") = 0.,
         py::arg("_collision_reward")     = -1.,
         py::arg("_step_reward")          = -1.,
+        py::arg("_noise")                = 0.01,
         py::arg("_seed")                 = 0
         )
     .def("reset",        &Environment::reset,

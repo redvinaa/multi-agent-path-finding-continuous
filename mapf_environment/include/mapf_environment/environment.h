@@ -10,6 +10,7 @@
 #include <box2d/box2d.h>
 #include <vector>
 #include <string>
+#include <random>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <gtest/gtest.h>
@@ -40,15 +41,20 @@ class Environment
         std::vector<float> agent_lin_vel, agent_ang_vel;
         std::vector<bool> collisions;
         std::vector<LaserScan> laser_scans;
-        bool draw_laser, done;
+        EnvStep last_env_step;
+        bool draw_laser, draw_noisy_pose, done;
         float block_size, scale_factor, laser_max_angle, laser_max_dist,
             robot_diam, robot_radius, map_width, map_height,
-            goal_reaching_reward, collision_reward, step_reward, episode_sim_time;
+            goal_reaching_reward, collision_reward, step_reward,
+            episode_sim_time, noise;
         std::string map_path;
         int render_height, laser_nrays, step_multiply, number_of_agents;
         unsigned int seed;
         cv::Mat map_image_raw, map_image, rendered_image;
         cv::Scalar color;
+
+        std::default_random_engine generator;
+        std::normal_distribution<float> dist;
 
         /*! \brief Load map
          *
@@ -147,12 +153,13 @@ class Environment
          * \param _goal_reaching_reward Reward for reaching the goal (only if all the other agents reach their goal too)
          * \param _collision_reward Added reward in the case of a collision
          * \param _step_reward Reward added in every step, except when the goal is reached
+         * \param _noise Zero mean Gaussian noise applied to agent_pose and scan in the Observations
          * \param _seed Seed to generate random numbers
          * \sa init_map(), init_physics()
          */
         Environment(std::string _map_path,
             float        _physics_step_size    = 0.01,
-            int          _step_multiply        = 5,
+            int          _step_multiply        = 10,
             float        _laser_max_angle      = 45.*M_PI/180.,
             float        _laser_max_dist       = 10.,
             float        _robot_diam           = 0.8,
@@ -161,9 +168,11 @@ class Environment
             int          _render_height        = 700,
             int          _laser_nrays          = 10,
             bool         _draw_laser           = false,
+            bool         _draw_noisy_pose      = false,
             float        _goal_reaching_reward = 0.,
             float        _collision_reward     = -1.,
             float        _step_reward          = -1.,
+            float        _noise                = 0.01,
             unsigned int _seed                 = 0);
 
         /*! \brief Set done=false, generate new starting positions and goals for all agents

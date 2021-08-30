@@ -13,11 +13,12 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <cmath>
+#include <random>
 
 
 Environment::Environment(std::string _map_path,
     float        _physics_step_size /* 0.01 */,
-    int          _step_multiply /* 5 */,
+    int          _step_multiply /* 10 */,
     float        _laser_max_angle /* 45.*M_PI/180. */,
     float        _laser_max_dist /* 10. */,
     float        _robot_diam /* 0.8 */,
@@ -26,14 +27,17 @@ Environment::Environment(std::string _map_path,
     int          _render_height /* 700 */,
     int          _laser_nrays /* 10 */,
     bool         _draw_laser /* false */,
+    bool         _draw_noisy_pose /* false */,
     float        _goal_reaching_reward /* 0. */,
     float        _collision_reward /* -1. */,
     float        _step_reward /* -1. */,
+    float        _noise /* 0.01 */,
     unsigned int _seed /* 0 */):
         gravity(0, 0),
         world(gravity),
         number_of_agents(0),
-        done(true)
+        done(true),
+        dist(0., _noise)
 {
     map_path             = _map_path;
     physics_step_size    = _physics_step_size;
@@ -46,9 +50,11 @@ Environment::Environment(std::string _map_path,
     render_height        = _render_height;
     laser_nrays          = _laser_nrays;
     draw_laser           = _draw_laser;
+    draw_noisy_pose      = _draw_noisy_pose;
     goal_reaching_reward = _goal_reaching_reward;
     collision_reward     = _collision_reward;
     step_reward          = _step_reward;
+    noise                = _noise;
     seed                 = _seed;
 
     robot_radius = robot_diam/2;
@@ -206,6 +212,8 @@ EnvStep Environment::reset()
     for (int i=0; i < number_of_agents; i++)
         out.observations.push_back(get_observation(i));
 
+    last_env_step = out;
+
     return out;
 }
 
@@ -308,28 +316,6 @@ void Environment::step_physics()
             b2Body* agent = agent_bodies[i];
             float angle = agent->GetAngle();
 
-            // calculate laser scans
-            b2Vec2 pt_from, pt_to;
-            b2Vec2 position = agent->GetPosition();
-
-            pt_from.x = robot_radius * std::cos(angle) + position.x;
-            pt_from.y = robot_radius * std::sin(angle) + position.y;
-            for (int j=0; j < laser_nrays; j++)
-            {
-                float laser_angle = angle - laser_max_angle + j * laser_max_angle * 2 / laser_nrays;
-                pt_to.x = laser_max_dist * std::cos(laser_angle) + pt_from.x;
-                pt_to.y = laser_max_dist * std::sin(laser_angle) + pt_from.y;
-
-                RayCastClosestCallback callback;
-                world.RayCast(&callback, pt_from, pt_to);
-
-                float dist = laser_max_dist;
-                if (callback.hit)
-                    dist = (pt_from - callback.point).Length();
-
-                laser_scans[i][j] = dist;
-            }
-
             // check collisions
             bool hit = false;
             for (b2ContactEdge* ce = agent->GetContactList(); ce; ce = ce->next)
@@ -360,6 +346,34 @@ void Environment::step_physics()
             break;
         }
     }
+
+    // calculate laser scans
+    for (int i=0; i < agent_bodies.size(); i++)
+    {
+        b2Body* agent = agent_bodies[i];
+        float angle = agent->GetAngle();
+
+        b2Vec2 pt_from, pt_to;
+        b2Vec2 position = agent->GetPosition();
+
+        pt_from.x = robot_radius * std::cos(angle) + position.x;
+        pt_from.y = robot_radius * std::sin(angle) + position.y;
+        for (int j=0; j < laser_nrays; j++)
+        {
+            float laser_angle = angle - laser_max_angle + j * laser_max_angle * 2 / laser_nrays;
+            pt_to.x = laser_max_dist * std::cos(laser_angle) + pt_from.x;
+            pt_to.y = laser_max_dist * std::sin(laser_angle) + pt_from.y;
+
+            RayCastClosestCallback callback;
+            world.RayCast(&callback, pt_from, pt_to);
+
+            float range = laser_max_dist;
+            if (callback.hit)
+                range = (pt_from - callback.point).Length();
+
+            laser_scans[i][j] = range + dist(generator);
+        }
+    }
 }
 
 cv::Mat Environment::get_rendered_pic()
@@ -387,6 +401,7 @@ cv::Mat Environment::get_rendered_pic()
 
     // draw agents
     float inner_radius = robot_radius * 0.8;
+    float noisy_pose_radius  = robot_radius * 0.2;
     auto font = cv::FONT_HERSHEY_TRIPLEX;
     int thickness = 3;
     int base_line = 0;
@@ -435,6 +450,16 @@ cv::Mat Environment::get_rendered_pic()
         textSize.y = center.y + textSize.y / 2;
         cv::putText(rendered_image, std::to_string(i), textSize, font, scale, cv::Scalar(0, 0, 0), thickness);
 
+        if (draw_noisy_pose)
+        {
+            auto noisy_pose = last_env_step.observations[i].agent_pose;
+            cv::Point noisy_center(noisy_pose.x*scale_factor, render_height-noisy_pose.y*scale_factor);
+            cv::circle(rendered_image, noisy_center, static_cast<int>(noisy_pose_radius*scale_factor),
+                cv::Scalar(0, 0, 0), 2);
+            cv::circle(rendered_image, noisy_center, static_cast<int>(noisy_pose_radius*scale_factor),
+                cv::Scalar(255, 255, 255), -1);
+        }
+
         // laser scans
         if (draw_laser)
         {
@@ -476,6 +501,7 @@ EnvStep Environment::step(std::vector<Action> actions)
         out.observations.push_back(get_observation(i));
 
     out.done = done;
+    last_env_step = out;
 
     return out;
 }
@@ -497,9 +523,9 @@ Observation Environment::get_observation(int agent_index)
     // position
     b2Vec2 position = agent_bodies[agent_index]->GetPosition();
     float yaw = agent->GetAngle();
-    obs.agent_pose.x = position.x;
-    obs.agent_pose.y = position.y;
-    obs.agent_pose.z = yaw;
+    obs.agent_pose.x = position.x + dist(generator);
+    obs.agent_pose.y = position.y + dist(generator);
+    obs.agent_pose.z = yaw        + dist(generator);
 
     // twist
     b2Vec2 vel = agent->GetLinearVelocity();
