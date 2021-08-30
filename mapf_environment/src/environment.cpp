@@ -10,7 +10,7 @@
 #include <string>
 #include <stdexcept>
 #include <functional>
-#include <stdlib.h>
+#include <cstdlib>
 #include <algorithm>
 #include <cmath>
 #include <random>
@@ -56,6 +56,8 @@ Environment::Environment(std::string _map_path,
     step_reward          = _step_reward;
     noise                = _noise;
     seed                 = _seed;
+
+    std::srand(seed);
 
     robot_radius = robot_diam/2;
     init_map();  // load map before physics
@@ -255,9 +257,9 @@ int Environment::add_agent()
     goal_positions.push_back(b2Vec2(x_pos, y_pos));
 
     // generate random color for agent
-    int b = static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX) * 255;
-    int r = static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX) * 255;
-    int g = static_cast<float>(rand_r(&seed)) / static_cast<float>(RAND_MAX) * 255;
+    int b = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * 255;
+    int r = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * 255;
+    int g = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * 255;
     cv::Scalar agent_color(b, r, g);
     agent_colors.push_back(agent_color);
 
@@ -401,7 +403,7 @@ cv::Mat Environment::get_rendered_pic()
 
     // draw agents
     float inner_radius = robot_radius * 0.8;
-    float noisy_pose_radius  = robot_radius * 0.2;
+    float noisy_pose_radius  = robot_radius * 0.1;
     auto font = cv::FONT_HERSHEY_TRIPLEX;
     int thickness = 3;
     int base_line = 0;
