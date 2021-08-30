@@ -4,9 +4,6 @@
 #define MAPF_ENVIRONMENT_ENVIRONMENT_H
 
 // ros datatype headers
-#include "mapf_environment/EnvStep.h"
-#include "geometry_msgs/Twist.h"
-#include "sensor_msgs/LaserScan.h"
 #include "mapf_environment/types.h"
 
 // other headers
@@ -42,7 +39,7 @@ class Environment
         std::vector<cv::Scalar> agent_colors;
         std::vector<float> agent_lin_vel, agent_ang_vel;
         std::vector<bool> collisions;
-        std::vector<sensor_msgs::LaserScan> laser_scans;
+        std::vector<LaserScan> laser_scans;
         bool draw_laser, done;
         float block_size, scale_factor, laser_max_angle, laser_max_dist,
             robot_diam, robot_radius, map_width, map_height,
@@ -97,7 +94,7 @@ class Environment
          * However, the velocities are set only in the step_physics()
          * \sa step_physics()
          */
-        void process_action(int agent_index, geometry_msgs::Twist action);
+        void process_action(int agent_index, Action action);
 
         /*! \brief Calculate the observations for the given agent
          *
@@ -187,21 +184,16 @@ class Environment
          */
         void remove_agent(int agent_index);
 
-        /*! \brief Render the obstacles, agents, goals, optionally
          * the raycasts, and show collisions as well
          *
-         * \param show If false, get image and return it, but don't show.
-         * \param wait Passed to cv::waitKey
          *
-         * \return The rendered image
          */
-        cv::Mat render(bool show = true, int wait = 0);
 
         /* \brief Add actions, get observations, rewards and done
          *
          * Based on OpenAI Gym API
          */
-        EnvStep step(std::vector<geometry_msgs::Twist> actions);
+        EnvStep step(CollectiveAction actions);
 
         /*! \brief Is the episode over
          */
@@ -239,8 +231,8 @@ class Environment
          */
         static std::vector<float> serialize_observation(Observation obs);
 
-        /*! \brief Take the Observation structure and
-         * put the relevant data in a float vector (REWARD IS EMPTY)
+        /*! \brief Take the observation data as a float vector
+         * and construct an Observation object out of it (REWARD IS EMPTY)
          *
          * Because the serialized observation does not contain the reward,
          * that of the deserialized one is set to zero.

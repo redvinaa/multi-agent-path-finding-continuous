@@ -1,43 +1,22 @@
 cmake_minimum_required(VERSION 3.5)
 project(mapf_environment)
 
-add_compile_options(-std=c++11)
+set(CMAKE_CXX_STANDARD 14)
 
 find_package(catkin REQUIRED COMPONENTS
-  geometry_msgs
-  sensor_msgs
-  std_msgs
-  message_generation
-  image_transport
+  pybind11_catkin
+  roslib
   roslint
 )
 
 find_package(OpenCV 4 REQUIRED)
 find_package(box2d REQUIRED)
 
-add_message_files(
-  FILES
-  Observation.msg
-  EnvStep.msg
-)
-
-add_service_files(
-  FILES
-  AddAgent.srv
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  geometry_msgs
-  sensor_msgs
-  mapf_environment
-)
 
 catkin_package(
  INCLUDE_DIRS include
- LIBRARIES mapf_environment
- CATKIN_DEPENDS geometry_msgs sensor_msgs std_msgs message_runtime
+ LIBRARIES mapf_environment mapf_env
+ CATKIN_DEPENDS pybind11_catkin roslib roslint
  DEPENDS box2d OpenCV
 )
 
@@ -50,19 +29,17 @@ include_directories(
 
 
 # add library
-add_library(${PROJECT_NAME}
+add_library(${PROJECT_NAME}_lib
   src/environment.cpp
   src/raycast_callback.cpp
 )
 
-add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${PROJECT_NAME}_lib PRIVATE ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES})
+set_target_properties(${PROJECT_NAME}_lib PROPERTIES OUTPUT ${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES}
-)
-
-## Mark libraries for installation
-install(TARGETS ${PROJECT_NAME}
+## Mark library for installation
+install(TARGETS ${PROJECT_NAME}_lib
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
@@ -77,7 +54,11 @@ install(DIRECTORY include/${PROJECT_NAME}/
 
 # testing
 catkin_add_gtest(${PROJECT_NAME}-test test/test_environment.cpp)
-target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME}_lib ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES})
+
+catkin_add_nosetests(test/test_python_wrapper.py)
 
 # linting
 roslint_cpp()
+roslint_python()
+roslint_add_test()

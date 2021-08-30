@@ -1,8 +1,6 @@
 // Copyright 2021 Reda Vince
 
 #include "mapf_environment/environment.h"
-#include "mapf_environment/EnvStep.h"
-#include "mapf_environment/Observation.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -112,7 +110,7 @@ TEST_F(EnvironmentFixture, testAddAndRemoveAgent)
     EXPECT_EQ(1, environment->collisions.size());
     EXPECT_EQ(1, environment->laser_scans.size());
 
-    EXPECT_EQ(environment->laser_nrays, environment->laser_scans[0].ranges.size());
+    EXPECT_EQ(environment->laser_nrays, environment->laser_scans[0].size());
 
     environment->remove_agent(0);
     EXPECT_EQ(environment->number_of_agents, 0);
@@ -163,9 +161,9 @@ TEST_F(EnvironmentFixture, testContact)
     // 0.1/(2*0.01)=5 time steps for them to collide.
     // Actually after 5 steps, they almost collide, so it takes a 6th step for them to do so
 
-    geometry_msgs::Twist action;
-    action.linear.x = 1;
-    action.angular.z = 0;
+    Action action;
+    action.x = 1;
+    action.z = 0;
     environment->process_action(0, action);
     environment->process_action(1, action);
 
@@ -187,9 +185,9 @@ TEST_F(EnvironmentFixture, testMovement)
     environment->reset();
     environment->add_agent();
 
-    geometry_msgs::Twist action;
-    action.linear.x = 1;
-    action.angular.z = -0.5;
+    Action action;
+    action.x = 1;
+    action.z = -0.5;
     environment->process_action(0, action);
 
     environment->step_physics();
@@ -208,12 +206,13 @@ TEST_F(EnvironmentFixture, testObservation)
     environment->reset();
     environment->add_agent();
 
-    geometry_msgs::Twist action;
-    action.linear.x = 1;
-    action.angular.z = -0.5;
-    std::vector<geometry_msgs::Twist> actions = {action};
+    Action action;
+    action.x = 1;
+    action.z = -0.5;
+    CollectiveAction actions = {action};
 
-    mapf_environment::EnvStep env_obs = environment->step(actions);
+    EnvStep env_obs = environment->step(actions);
+    environment->render(2000);
 
     b2Transform agent_tf_expected = environment->agent_bodies[0]->GetTransform();
     b2Vec2 agent_pose(env_obs.observations[0].agent_pose.x, env_obs.observations[0].agent_pose.y);
@@ -254,7 +253,8 @@ TEST_F(EnvironmentFixture, testSerialize)
     auto obs = environment->get_observation(0);
     obs.reward = 0;
     auto ser_obs = Environment::serialize_observation(obs);
-    EXPECT_EQ(obs, Environment::deserialize_observation(ser_obs));
+    EXPECT_TRUE(obs.agent_pose.x == Environment::deserialize_observation(ser_obs).agent_pose.x);
+    EXPECT_TRUE(obs.scan[0] == Environment::deserialize_observation(ser_obs).scan[0]);
 }
 
 

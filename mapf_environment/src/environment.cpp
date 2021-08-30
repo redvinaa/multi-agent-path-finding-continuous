@@ -1,14 +1,8 @@
 // Copyright 2021 Reda Vince
 
-// ros datatype headers
-#include <geometry_msgs/Twist.h>
-#include <mapf_environment/Observation.h>
-#include <mapf_environment/EnvStep.h>
-#include <sensor_msgs/LaserScan.h>
-
-// other headers
-#include <mapf_environment/environment.h>
-#include <mapf_environment/raycast_callback.h>
+#include "mapf_environment/environment.h"
+#include "mapf_environment/raycast_callback.h"
+#include "mapf_environment/types.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <box2d/box2d.h>
@@ -250,8 +244,8 @@ int Environment::add_agent()
     number_of_agents++;
 
     // fill laser_scans
-    sensor_msgs::LaserScan scan;
-    scan.ranges.resize(laser_nrays);
+    LaserScan scan;
+    scan.resize(laser_nrays);
     laser_scans.push_back(scan);
 
     collisions.push_back(false);
@@ -320,7 +314,7 @@ void Environment::step_physics()
                 if (callback.hit)
                     dist = (pt_from - callback.point).Length();
 
-                laser_scans[i].ranges[j] = dist;
+                laser_scans[i][j] = dist;
             }
 
             // check collisions
@@ -437,8 +431,8 @@ cv::Mat Environment::render(bool show, int wait)
             for (int j=0; j < laser_nrays; j++)
             {
                 float laser_angle = angle - laser_max_angle + j * laser_max_angle * 2 / laser_nrays;
-                pt_to.x = laser_scans[i].ranges[j] * scale_factor * std::cos(-laser_angle) + pt_from.x;
-                pt_to.y = laser_scans[i].ranges[j] * scale_factor * std::sin(-laser_angle) + pt_from.y;
+                pt_to.x = laser_scans[i][j] * scale_factor * std::cos(-laser_angle) + pt_from.x;
+                pt_to.y = laser_scans[i][j] * scale_factor * std::sin(-laser_angle) + pt_from.y;
                 cv::line(rendered_image, pt_from, pt_to, cv::Scalar(125, 125, 125));
             }
         }
@@ -465,13 +459,15 @@ EnvStep Environment::step(std::vector<Action> actions)
     for (int i=0; i < number_of_agents; i++)
         out.observations.push_back(get_observation(i));
 
+    out.done = done;
+
     return out;
 }
 
 void Environment::process_action(int agent_index, Action action)
 {
-    agent_lin_vel[agent_index] = action.linear.x;
-    agent_ang_vel[agent_index] = action.angular.z;
+    agent_lin_vel[agent_index] = action.x;
+    agent_ang_vel[agent_index] = action.z;
 }
 
 Observation Environment::get_observation(int agent_index)
@@ -555,7 +551,7 @@ std::vector<float> Environment::serialize_observation(Observation obs)
     serialized.push_back(obs.goal_pose.y);
 
     // scan
-    serialized.insert(serialized.end(), obs.scan.ranges.begin(), obs.scan.ranges.end());
+    serialized.insert(serialized.end(), obs.scan.begin(), obs.scan.end());
 
     return serialized;
 }
@@ -578,7 +574,7 @@ Observation Environment::deserialize_observation(std::vector<float> obs)
     deserialized.goal_pose.y = obs[6];
 
     // scan
-    deserialized.scan.ranges.insert(deserialized.scan.ranges.begin(), obs.begin()+7, obs.end());
+    deserialized.scan.insert(deserialized.scan.begin(), obs.begin()+7, obs.end());
 
     return deserialized;
 }
