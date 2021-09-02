@@ -24,7 +24,7 @@
  */
 class Environment
 {
-    private:
+    protected:
         // box2d fields
         b2Vec2  gravity;
         b2World world;
