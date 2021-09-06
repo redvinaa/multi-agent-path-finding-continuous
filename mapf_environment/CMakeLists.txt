@@ -8,17 +8,32 @@ find_package(catkin REQUIRED COMPONENTS
   roslib
   roslint
   roscpp
+  sensor_msgs
+  geometry_msgs
+  message_generation
+  image_transport
+  cv_bridge
 )
 
-find_package(OpenCV 4 REQUIRED)
+find_package(OpenCV 3.2 REQUIRED)
 find_package(box2d REQUIRED)
 
+add_message_files(
+  FILES
+  Observation.msg
+)
 
-catkin_package(
- INCLUDE_DIRS include
- LIBRARIES mapf_environment mapf_env
- CATKIN_DEPENDS pybind11_catkin roslib roslint roscpp
- DEPENDS box2d OpenCV
+add_service_files(
+  FILES
+  AddAgent.srv
+  RemoveAgent.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+  sensor_msgs
 )
 
 include_directories(
@@ -29,31 +44,31 @@ include_directories(
 )
 
 
-# add library
-add_library(${PROJECT_NAME}_lib
-  src/environment.cpp
-  src/raycast_callback.cpp
+catkin_package(
+ INCLUDE_DIRS include
+ LIBRARIES mapf_environment mapf_env
+ CATKIN_DEPENDS pybind11_catkin roslib roslint roscpp sensor_msgs geometry_msgs image_transport cv_bridge
+ DEPENDS box2d OpenCV
 )
 
-add_dependencies(${PROJECT_NAME}_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}_lib PRIVATE ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES})
-set_target_properties(${PROJECT_NAME}_lib PROPERTIES OUTPUT ${PROJECT_NAME})
 
-## Mark library for installation
-install(TARGETS ${PROJECT_NAME}_lib
+# add library
+add_library(${PROJECT_NAME}_lib src/environment.cpp src/raycast_callback.cpp)
+target_link_libraries(${PROJECT_NAME}_lib PUBLIC ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES})
+
+add_executable(${PROJECT_NAME}_node src/ros_wrapper_node.cpp src/environment_wrapper.cpp)
+target_link_libraries(${PROJECT_NAME}_node PUBLIC ${PROJECT_NAME}_lib)
+set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME environment_node)
+
+pybind_add_module(mapf_env MODULE src/python_wrapper.cpp)
+target_link_libraries(mapf_env PUBLIC ${PROJECT_NAME}_lib)
+
+
+## Mark library for installation, executable and python module
+install(TARGETS ${PROJECT_NAME}_lib ${PROJECT_NAME}_node mapf_env
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
-)
-
-pybind_add_module(mapf_env MODULE src/python_wrapper.cpp)
-target_link_libraries(mapf_env PRIVATE ${PROJECT_NAME}_lib ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES})
-# catkin_install_python(PROGRAMS test/test_python_wrapper.py
-#     DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
-
-## Mark module for installation
-install(TARGETS mapf_env
-  DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
 )
 
 ## Mark cpp header files for installation
