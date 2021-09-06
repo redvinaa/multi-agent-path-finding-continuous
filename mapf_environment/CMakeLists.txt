@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   pybind11_catkin
   roslib
   roslint
+  roscpp
 )
 
 find_package(OpenCV 4 REQUIRED)
@@ -16,7 +17,7 @@ find_package(box2d REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES mapf_environment mapf_env
- CATKIN_DEPENDS pybind11_catkin roslib roslint
+ CATKIN_DEPENDS pybind11_catkin roslib roslint roscpp
  DEPENDS box2d OpenCV
 )
 

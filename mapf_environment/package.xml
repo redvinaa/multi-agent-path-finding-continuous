@@ -8,11 +8,14 @@
   <license>TODO</license>
 
   <doc_depend>doxygen</doc_depend>
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
   <buildtool_depend>catkin</buildtool_depend>
   <test_depend>rosunit</test_depend>
   <depend>roslib</depend>
   <depend>roslint</depend>
   <depend>pybind11_catkin</depend>
+  <depend>roscpp</depend>
 
   <export>
   </export>
