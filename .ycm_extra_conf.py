@@ -17,6 +17,8 @@ def Settings(**kwargs):
         '-I/usr/local/include',
 
         '-I/usr/local/include/opencv4',
+        '-I/opt/ros/melodic/include',
+        '-I/home/vince/catkin_ws/devel/include'
     ]
 
     rospack = RosPack()
