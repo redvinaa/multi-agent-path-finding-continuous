@@ -47,7 +47,7 @@ class TestWrapper(unittest.TestCase):
         self.assertEqual(env.add_agent(), 2)
 
         # reset
-        env.reset()
+        env_obs = env.reset()
 
         # remove_agent
         env.remove_agent(2)
@@ -57,14 +57,14 @@ class TestWrapper(unittest.TestCase):
         from mapf_env import Point
 
         # render && step
-        for _ in range(100):
+        while not env_obs.done:
             env.render(10)
             p1 = Point()
             p1.x = 10.
             p2 = Point()
             p2.x = 2.
             p2.z = -5.
-            env.step([p1, p2])
+            env_obs = env.step([p1, p2])
 
         self.assertEqual(env.get_observation_size(), 17)
 

@@ -35,11 +35,11 @@ PYBIND11_MODULE(mapf_env, m)
         .def_readwrite("done", &EnvStep::done, "Whether the episode is done");
 
     py::class_<Environment>(m, "Environment", "Environment for multi-agent path finding simulation")
-    .def(py::init<std::string, float, int, float, float, float, int, int, int, int,
+    .def(py::init<std::string, float, int, float, float, float, int, int, int, int, int,
         bool, bool, float, float, float, float, unsigned int>(),
         py::arg("map_path"),
         py::arg("physics_step_size")    = 0.01,
-        py::arg("step_multiply")        = 10,
+        py::arg("step_multiply")        = 50,
         py::arg("laser_max_angle")      = 45.*M_PI/180.,
         py::arg("laser_max_dist")       = 10.,
         py::arg("robot_diam")           = 0.8,
@@ -47,10 +47,11 @@ PYBIND11_MODULE(mapf_env, m)
         py::arg("position_iterations")  = 2,
         py::arg("render_height")        = 700,
         py::arg("laser_nrays")          = 10,
+        py::arg("max_steps")            = 60,
         py::arg("draw_laser")           = false,
         py::arg("draw_noisy_pose")      = false,
-        py::arg("goal_reaching_reward") = 0.,
-        py::arg("collision_reward")     = -1.,
+        py::arg("goal_reaching_reward") = 1.,
+        py::arg("collision_reward")     = -0.5,
         py::arg("step_reward")          = -1.,
         py::arg("noise")                = 0.01,
         py::arg("seed")                 = 0

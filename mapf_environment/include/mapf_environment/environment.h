@@ -48,7 +48,8 @@ class Environment
             goal_reaching_reward, collision_reward, step_reward,
             episode_sim_time, noise;
         std::string map_path;
-        int render_height, laser_nrays, step_multiply, number_of_agents;
+        int render_height, laser_nrays, step_multiply,
+            number_of_agents, max_steps, current_steps;
         unsigned int seed;
         cv::Mat map_image_raw, map_image, rendered_image;
         cv::Scalar color;
@@ -76,23 +77,26 @@ class Environment
          */
         int generate_empty_index(void) const;
 
-        /*! \brief Step physics, calculate scans, collisions
+        /*! \brief Step physics, calculate observations (incl. scans, collisions)
          *
-         * First the internally stored linear and angular velocities are set.
+         * First, the stored collisions are cleared.
+         *
+         * Then, the internally stored linear and angular velocities are set.
          * Then, the physics simulation step is calculated.
-         * Finally, the observations are updated:
+         * Finally, the observations are updated (step_multiply times):
          *   - laser_scans
-         *   - collisions
+         *   - collisions,
+         * along with the other parts of the observations.
          *
-         * After that, the environment checks if all the agents reached their
-         * goals. If yes, then done=true is set.
-         * However, collisions are not set to false here, so as not to miss
-         * any. It is set to false after an observation is queried for the agent.
-         * \return Index of the new agent (starting from 0)
-         * \exception std::runtime_error Raised if done=true
-         * \sa get_observation()
+         * Important: done is not set here, but in step(), which calls this function.
+         *
+         * After that, the environment checks if any of the agents reached their
+         * goals. If yes, then for the given agents a new goal is generated.
+         * \return Observations for the agents
+         * \exception std::runtime_error Raised if done == true
+         * \sa get_observation(), step()
          */
-        void step_physics();
+        EnvStep step_physics();
 
         /*! \brief Save the linear and angular velocity of the
          * given agent
@@ -110,18 +114,13 @@ class Environment
          *   - geometry_msgs/Point agent_twist # linear x, and angle z
          *   - geometry_msgs/Point goal_pose # x, y only
          *   - float32 reward
-         *   - bool done
          *
-         * After the observation for the given agent is queried,
-         * the collision for that agent is set to false,
-         * so it is important that this function is called at most once
-         * per physics step. Also, the collisions are only set false here,
-         * but not in step_physics()
+         * Rewards are calculated based on the reached_goal argument.
          *
          * \sa step_physics()
          * \return The calculated observation
          */
-        Observation get_observation(int agent_index);
+        Observation get_observation(int agent_index, bool reached_goal);
 
         FRIEND_TEST(EnvironmentCore, constructorRuns);
         FRIEND_TEST(EnvironmentFixture, testConstructor);
@@ -149,6 +148,7 @@ class Environment
          * \param _position_iterations Parameter of the box2d physics engine
          * \param _render_height Height of the rendered image (from which the width is given)
          * \param _laser_nrays Number of rays for the raycast
+         * \param _max_steps The episode is ended after this many steps
          * \param _draw_laser Wether to show the raycasts on the rendered image
          * \param _goal_reaching_reward Reward for reaching the goal (only if all the other agents reach their goal too)
          * \param _collision_reward Added reward in the case of a collision
@@ -159,7 +159,7 @@ class Environment
          */
         Environment(std::string _map_path,
             float        _physics_step_size    = 0.01,
-            int          _step_multiply        = 10,
+            int          _step_multiply        = 50,
             float        _laser_max_angle      = 45.*M_PI/180.,
             float        _laser_max_dist       = 10.,
             float        _robot_diam           = 0.8,
@@ -167,11 +167,12 @@ class Environment
             int          _position_iterations  = 2,
             int          _render_height        = 700,
             int          _laser_nrays          = 10,
+            int          _max_steps            = 60,
             bool         _draw_laser           = false,
             bool         _draw_noisy_pose      = false,
-            float        _goal_reaching_reward = 0.,
-            float        _collision_reward     = -1.,
-            float        _step_reward          = -1.,
+            float        _goal_reaching_reward = 1.,
+            float        _collision_reward     = -0.5,
+            float        _step_reward          = -0.1,
             float        _noise                = 0.01,
             unsigned int _seed                 = 0);
 
@@ -210,7 +211,9 @@ class Environment
 
         /* \brief Add actions, get observations, rewards and done
          *
-         * Based on OpenAI Gym API
+         * Done is set here, if max_steps is reached.
+         *
+         * Based loosely on OpenAI Gym API
          */
         EnvStep step(CollectiveAction actions);
 

@@ -18,7 +18,7 @@
 
 Environment::Environment(std::string _map_path,
     float        _physics_step_size /* 0.01 */,
-    int          _step_multiply /* 10 */,
+    int          _step_multiply /* 50 */,
     float        _laser_max_angle /* 45.*M_PI/180. */,
     float        _laser_max_dist /* 10. */,
     float        _robot_diam /* 0.8 */,
@@ -26,17 +26,18 @@ Environment::Environment(std::string _map_path,
     int          _position_iterations /* 2 */,
     int          _render_height /* 700 */,
     int          _laser_nrays /* 10 */,
+    int          _max_steps /* 60 */,
     bool         _draw_laser /* false */,
     bool         _draw_noisy_pose /* false */,
-    float        _goal_reaching_reward /* 0. */,
-    float        _collision_reward /* -1. */,
+    float        _goal_reaching_reward /* 1. */,
+    float        _collision_reward /* -0.5 */,
     float        _step_reward /* -1. */,
     float        _noise /* 0.01 */,
     unsigned int _seed /* 0 */):
         gravity(0, 0),
         world(gravity),
-        number_of_agents(0),
         done(true),
+        number_of_agents(0),
         dist(0., _noise)
 {
     map_path             = _map_path;
@@ -49,6 +50,7 @@ Environment::Environment(std::string _map_path,
     position_iterations  = _position_iterations;
     render_height        = _render_height;
     laser_nrays          = _laser_nrays;
+    max_steps            = _max_steps;
     draw_laser           = _draw_laser;
     draw_noisy_pose      = _draw_noisy_pose;
     goal_reaching_reward = _goal_reaching_reward;
@@ -58,6 +60,7 @@ Environment::Environment(std::string _map_path,
     seed                 = _seed;
 
     std::srand(seed);
+    assert(robot_diam < 1.);
 
     robot_radius = robot_diam/2;
     init_map();  // load map before physics
@@ -199,6 +202,7 @@ EnvStep Environment::reset()
 
     done = false;
     episode_sim_time = 0.;
+    current_steps = 0;
 
     // create new agents with new goals
     int number_of_agents_ = number_of_agents;
@@ -209,16 +213,12 @@ EnvStep Environment::reset()
         add_agent();
 
     // get observations
-    step_physics();  // no movement, but calculate laser scans
-    EnvStep out;
-    for (int i=0; i < number_of_agents; i++)
-        out.observations.push_back(get_observation(i));
-
-    last_env_step = out;
+    EnvStep out = step_physics();  // no movement, but calculate laser scans
+    last_env_step = out;  // save observations for rendering
+    out.done = false;
 
     return out;
 }
-
 
 int Environment::add_agent()
 {
@@ -233,6 +233,7 @@ int Environment::add_agent()
     float x_pos = col + 0.5;
     float y_pos = map_height - row - 0.5;
     bodyDef.position.Set(x_pos, y_pos);
+    bodyDef.angle = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * M_PI * 2;
     b2Body* body = world.CreateBody(&bodyDef);
 
     b2CircleShape circleShape;
@@ -294,13 +295,22 @@ void Environment::remove_agent(int agent_index)
     agent_ang_vel.erase(agent_ang_vel.begin()+agent_index);
 }
 
-void Environment::step_physics()
+EnvStep Environment::step_physics()
 {
     if (done == true)
         throw std::runtime_error("Attempted to step environment that is finished. Call reset() first");
 
+    std::fill(collisions.begin(), collisions.end(), false);
+
+    std::vector<bool> reached_goal(get_number_of_agents());
+    std::fill(reached_goal.begin(), reached_goal.end(), false);
+
+    /* Step env step_multily number of times, and calculate collisions
+     * for each step. Collisions are only set to false after the loop
+     * while getting observations */
     for (int j=0; j < step_multiply; j++)
     {
+        // set agent speeds
         for (int i=0; i < agent_bodies.size(); i++)
         {
             b2Body* agent = agent_bodies[i];
@@ -313,10 +323,10 @@ void Environment::step_physics()
         world.Step(physics_step_size, velocity_iterations, position_iterations);
         episode_sim_time += physics_step_size;
 
+        // get collisions
         for (int i=0; i < agent_bodies.size(); i++)
         {
             b2Body* agent = agent_bodies[i];
-            float angle = agent->GetAngle();
 
             // check collisions
             bool hit = false;
@@ -330,22 +340,23 @@ void Environment::step_physics()
                 collisions[i] = true;
         }
 
-        // check if all the agents reached their goal
-        bool check_done = true;
+        // check if any of the agents reached their goal
         for (int i=0; i < agent_bodies.size(); i++)
         {
             b2Body* agent = agent_bodies[i];
-            if ((agent->GetPosition() - goal_positions[i]).Length() > robot_diam)
-            {
-                check_done = false;
-                break;
-            }
-        }
+            bool done = ((agent->GetPosition() - goal_positions[i]).Length() < robot_diam);
 
-        if (check_done)
-        {
-            done = true;
-            break;
+            if (done)  // if done, generate new goal
+            {
+                int index = generate_empty_index();
+                int row = index / map_image_raw.size().width;
+                int col = index - row * map_image_raw.size().width;  // integer division
+                float x_pos = col + 0.5;
+                float y_pos = map_height - row - 0.5;
+                goal_positions[i] = b2Vec2(x_pos, y_pos);
+
+                reached_goal[i] = true;
+            }
         }
     }
 
@@ -376,6 +387,16 @@ void Environment::step_physics()
             laser_scans[i][j] = range + dist(generator);
         }
     }
+
+    EnvStep out;
+
+    // get observations
+    for (int i=0; i < number_of_agents; i++)
+    {
+        out.observations.push_back(get_observation(i, reached_goal[i]));
+    }
+
+    return out;
 }
 
 cv::Mat Environment::get_rendered_pic()
@@ -407,7 +428,8 @@ cv::Mat Environment::get_rendered_pic()
     auto font = cv::FONT_HERSHEY_TRIPLEX;
     int thickness = 3;
     int base_line = 0;
-    auto scale = cv::getFontScaleFromHeight(font, inner_radius*scale_factor, thickness);
+    // auto scale = cv::getFontScaleFromHeight(font, inner_radius*scale_factor, thickness);  // TODO
+    int scale = 3;
     for (int i=0; i < agent_bodies.size(); i++)
     {
         b2Vec2 position = agent_bodies[i]->GetPosition();
@@ -489,21 +511,21 @@ void Environment::render(int wait)
 
 EnvStep Environment::step(std::vector<Action> actions)
 {
-    EnvStep out;
-
     // process actions
     for (int i=0; i < number_of_agents; i++)
         process_action(i, actions[i]);
 
-    // step_physics
-    step_physics();
+    EnvStep out = step_physics();
+    last_env_step = out;  // save observations for rendering
 
-    // get observations
-    for (int i=0; i < number_of_agents; i++)
-        out.observations.push_back(get_observation(i));
-
-    out.done = done;
-    last_env_step = out;
+    current_steps++;
+    if (current_steps >= max_steps)
+    {
+        done = true;
+        out.done = true;
+    }
+    else
+        out.done = false;
 
     return out;
 }
@@ -514,7 +536,7 @@ void Environment::process_action(int agent_index, Action action)
     agent_ang_vel[agent_index] = action.z;
 }
 
-Observation Environment::get_observation(int agent_index)
+Observation Environment::get_observation(int agent_index, bool reached_goal)
 {
     b2Body* agent = agent_bodies[agent_index];
     Observation obs;
@@ -541,18 +563,16 @@ Observation Environment::get_observation(int agent_index)
     obs.goal_pose.y = goal_positions[agent_index].y;
 
     // reward and done
-    obs.reward = 0;
-    if (done)
+    if (reached_goal)
     {
         obs.reward = goal_reaching_reward;
     }
     else
     {
         obs.reward = step_reward;
-        if (collisions[agent_index]) obs.reward += collision_reward;
+        if (collisions[agent_index])
+            obs.reward += collision_reward;
     }
-
-    collisions[agent_index] = false;
 
     return obs;
 }
