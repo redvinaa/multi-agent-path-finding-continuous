@@ -206,11 +206,15 @@ EnvStep Environment::reset()
 
     // create new agents with new goals
     int number_of_agents_ = number_of_agents;
+    auto agent_colors_    = agent_colors;
     while (number_of_agents > 0)
         remove_agent(number_of_agents-1);
 
     for (int i=0; i < number_of_agents_; i++)
         add_agent();
+
+    // restore original agent colors
+    agent_colors = agent_colors_;
 
     // get observations
     EnvStep out = step_physics();  // no movement, but calculate laser scans
