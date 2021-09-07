@@ -219,11 +219,11 @@ class Environment
 
         /*! \brief Is the episode over
          */
-        bool is_done();
+        bool is_done() const;
 
         /*! \brief Get number of agents
          */
-        int get_number_of_agents();
+        int get_number_of_agents() const;
 
         /*! \brief How much time has passed in the simulation
          * since the start of the episode
@@ -235,11 +235,11 @@ class Environment
          *
          * \return Simulation time
          */
-        float get_episode_sim_time();
+        float get_episode_sim_time() const;
 
         /*! \brief Calculate how many relevant elements an observation has
          */
-        int get_observation_size();
+        int get_observation_size() const;
 
         /*! \brief Take the Observation structure and
          * put the relevant data in a float vector (STRIPS REWARD)

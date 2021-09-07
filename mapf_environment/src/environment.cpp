@@ -589,22 +589,22 @@ Observation Environment::get_observation(int agent_index, bool reached_goal)
     return obs;
 }
 
-bool Environment::is_done()
+bool Environment::is_done() const
 {
     return done;
 }
 
-int Environment::get_number_of_agents()
+int Environment::get_number_of_agents() const
 {
     return number_of_agents;
 }
 
-float Environment::get_episode_sim_time()
+float Environment::get_episode_sim_time() const
 {
     return episode_sim_time;
 }
 
-int Environment::get_observation_size()
+int Environment::get_observation_size() const
 {
     return 7 + laser_nrays;
 }
