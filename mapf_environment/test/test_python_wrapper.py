@@ -60,10 +60,10 @@ class TestWrapper(unittest.TestCase):
         while not env_obs.done:
             env.render(10)
             p1 = Point()
-            p1.x = 10.
+            p1.x = 1.
             p2 = Point()
-            p2.x = 2.
-            p2.z = -5.
+            p2.x = 1.
+            p2.z = -0.5
             env_obs = env.step([p1, p2])
 
         self.assertEqual(env.get_observation_size(), 17)

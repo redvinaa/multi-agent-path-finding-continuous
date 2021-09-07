@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <algorithm>
 #include <random>
 #include <opencv2/opencv.hpp>
 #include <ros/package.h>
@@ -74,7 +75,6 @@ TEST_F(EnvironmentFixture, testPhysics)
     EXPECT_FALSE(hit);
 
     // test that there is an obstacle right below that
-
     point.Set(0.5f, 2.5f);
     hit = false;
     for (auto it=environment->obstacle_bodies.begin(); it != environment->obstacle_bodies.end(); it++)
@@ -205,7 +205,7 @@ TEST_F(EnvironmentFixture, testObservation)
     EXPECT_TRUE(std::abs(environment->step_reward - (-0.1)) < 0.01);
     EXPECT_EQ(environment->collision_reward, -0.5);
     EXPECT_EQ(environment->goal_reaching_reward, 1.);
-    EXPECT_EQ(environment->max_steps, 50);
+    EXPECT_EQ(environment->max_steps, 60);
 
     environment->add_agent();
     environment->reset();
@@ -250,7 +250,7 @@ TEST_F(EnvironmentFixture, testObservation)
 TEST_F(EnvironmentFixture, testRender)
 {
     std::default_random_engine generator;
-    std::normal_distribution<float> dist(1.0, 0.1);
+    std::normal_distribution<float> dist(0.9, 0.1);
 
     environment->add_agent();
     environment->add_agent();
@@ -265,8 +265,8 @@ TEST_F(EnvironmentFixture, testRender)
 
         for (auto& a : actions)
         {
-            a.x = dist(generator);
-            a.z = dist(generator);
+            a.x = std::min(static_cast<double>(dist(generator)), 1.);
+            a.z = std::min(static_cast<double>(dist(generator)), M_PI/2);
         }
 
         env_obs = environment->step(actions);

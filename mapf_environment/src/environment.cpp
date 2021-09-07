@@ -532,6 +532,10 @@ EnvStep Environment::step(std::vector<Action> actions)
 
 void Environment::process_action(int agent_index, Action action)
 {
+    float eps = 1e-3;
+    assert(std::abs(action.x) < 1. + eps);      // max 1 m/s
+    assert(std::abs(action.z) < M_PI/2 + eps);  // max 90 deg/s
+
     agent_lin_vel[agent_index] = action.x;
     agent_ang_vel[agent_index] = action.z;
 }

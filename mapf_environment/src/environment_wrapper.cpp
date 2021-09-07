@@ -173,6 +173,35 @@ void RosEnvironment::step(const ros::TimerEvent&)
 
 void RosEnvironment::process_action(int agent_index, const geometry_msgs::TwistConstPtr& action)
 {
-    coll_action[agent_index].x = action->linear.x;
-    coll_action[agent_index].z = action->angular.z;
+    if (std::abs(action->linear.x) < 1.)
+        coll_action[agent_index].x = action->linear.x;
+    else
+    {
+        ROS_WARN_STREAM("Received linear velocity greater than 1 m/s ("
+            << action->linear.x
+            << "), trimming");
+        if (action->linear.x > 0)
+        {
+            coll_action[agent_index].x = 1.;
+        }
+        else
+            coll_action[agent_index].x = -1;
+    }
+
+    if (std::abs(action->angular.z) < M_PI/2)
+        coll_action[agent_index].z = action->angular.z;
+    else
+    {
+        ROS_WARN_STREAM("Received angular velocity greater than "
+            << M_PI/2
+            << " rad/s ("
+            << action->angular.z
+            << "), trimming");
+        if (action->angular.z > 0)
+        {
+            coll_action[agent_index].z = M_PI/2.;
+        }
+        else
+            coll_action[agent_index].z = -M_PI/2;
+    }
 }
