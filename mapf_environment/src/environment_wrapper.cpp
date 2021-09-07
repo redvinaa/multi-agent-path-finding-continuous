@@ -35,16 +35,15 @@ RosEnvironment::RosEnvironment(ros::NodeHandle _nh):
     bool draw_laser, draw_noisy_pose;
 
     // read parameters
-    ros::NodeHandle nh_private("~");
-    nh_private.param<std::string>("map_path",     map_path,          default_map_path);
-    nh_private.param<double>("physics_step_size", physics_step_size, 0.1);
-    nh_private.param<double>("laser_max_angle",   laser_max_angle,   45*M_PI/180);
-    nh_private.param<double>("laser_max_dist",    laser_max_dist,    10);
-    nh_private.param<double>("robot_diam",        robot_diam,        0.8);
-    nh_private.param<int>("laser_nrays",          laser_nrays,       10);
-    nh_private.param<int>("max_steps",            max_steps,         300);
-    nh_private.param<bool>("draw_laser",          draw_laser,        true);
-    nh_private.param<bool>("draw_noisy_pose",     draw_noisy_pose,   true);
+    nh.param<std::string>("map_path",     map_path,          default_map_path);
+    nh.param<double>("physics_step_size", physics_step_size, 0.1);
+    nh.param<double>("laser_max_angle",   laser_max_angle,   45*M_PI/180);
+    nh.param<double>("laser_max_dist",    laser_max_dist,    10);
+    nh.param<double>("robot_diam",        robot_diam,        0.8);
+    nh.param<int>("laser_nrays",          laser_nrays,       10);
+    nh.param<int>("max_steps",            max_steps,         300);
+    nh.param<bool>("draw_laser",          draw_laser,        true);
+    nh.param<bool>("draw_noisy_pose",     draw_noisy_pose,   true);
 
     env = std::make_shared<Environment>(
         map_path,

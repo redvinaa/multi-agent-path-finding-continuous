@@ -554,7 +554,11 @@ Observation Environment::get_observation(int agent_index, bool reached_goal)
 
     // position
     b2Vec2 position = agent_bodies[agent_index]->GetPosition();
+
     float yaw = agent->GetAngle();
+    yaw = std::max(yaw, static_cast<float>(0.));  // normalize angle between 0 and pi
+    yaw = std::min(yaw, static_cast<float>(M_PI));
+
     obs.agent_pose.x = position.x + dist(generator);
     obs.agent_pose.y = position.y + dist(generator);
     obs.agent_pose.z = yaw        + dist(generator);
