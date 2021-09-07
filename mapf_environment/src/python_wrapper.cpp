@@ -35,9 +35,10 @@ PYBIND11_MODULE(mapf_env, m)
         .def_readwrite("done", &EnvStep::done, "Whether the episode is done");
 
     py::class_<Environment>(m, "Environment", "Environment for multi-agent path finding simulation")
-    .def(py::init<std::string, float, int, float, float, float, int, int, int, int, int,
+    .def(py::init<std::string, int, float, int, float, float, float, int, int, int, int, int,
         bool, bool, float, float, float, float, unsigned int>(),
         py::arg("map_path"),
+        py::arg("number_of_agents")     = 2,
         py::arg("physics_step_size")    = 0.01,
         py::arg("step_multiply")        = 50,
         py::arg("laser_max_angle")      = 45.*M_PI/180.,
@@ -58,10 +59,6 @@ PYBIND11_MODULE(mapf_env, m)
         )
     .def("reset",        &Environment::reset,
         "Set done=false, generate new starting positions and goals for all agents")
-    .def("add_agent",    &Environment::add_agent,
-        "Create an agent with physics, random starting and goal positions")
-    .def("remove_agent", &Environment::remove_agent,
-        "Remove the given agent and its goal from the simulation")
     .def("step",         &Environment::step,
         "Add actions, get observations, rewards and done")
     .def("render",       &Environment::render,

@@ -8,6 +8,7 @@
 #include <box2d/box2d.h>
 #include <vector>
 #include <string>
+#include <utility>
 #include <stdexcept>
 #include <functional>
 #include <cstdlib>
@@ -17,6 +18,7 @@
 
 
 Environment::Environment(std::string _map_path,
+    int          _number_of_agents /* 2 */,
     float        _physics_step_size /* 0.01 */,
     int          _step_multiply /* 50 */,
     float        _laser_max_angle /* 45.*M_PI/180. */,
@@ -41,6 +43,7 @@ Environment::Environment(std::string _map_path,
         dist(0., _noise)
 {
     map_path             = _map_path;
+    number_of_agents     = _number_of_agents;
     physics_step_size    = _physics_step_size;
     step_multiply        = _step_multiply;
     laser_max_angle      = _laser_max_angle;
@@ -61,10 +64,14 @@ Environment::Environment(std::string _map_path,
 
     std::srand(seed);
     assert(robot_diam < 1.);
+    assert(number_of_agents > 0);
 
     robot_radius = robot_diam/2;
     init_map();  // load map before physics
     init_physics();
+
+    for (int i=0; i < _number_of_agents; i++)
+        add_agent();
 }
 
 void Environment::init_map(void)
@@ -141,7 +148,7 @@ void Environment::init_physics(void)
     }
 }
 
-int Environment::generate_empty_index() const
+std::pair<float, float> Environment::generate_empty_position() const
 {
     // number of (flattened) indices on the grid map
     int num_index = map_image_raw.size().width * map_image_raw.size().height;
@@ -179,15 +186,22 @@ int Environment::generate_empty_index() const
                 break;
             }
         }
-        for (auto& goal : goal_positions)
+        if (!somethings_near)
         {
-            if ((goal - index_position).Length() < robot_diam)
+            for (auto& goal : goal_positions)
             {
-                somethings_near = true;
-                break;
+                if ((goal - index_position).Length() < robot_diam)
+                {
+                    somethings_near = true;
+                    break;
+                }
             }
         }
-        if (!somethings_near) return index;
+        if (!somethings_near)
+        {
+            // found position, return
+            return std::make_pair(x_pos, y_pos);
+        }
     }
     // no index found, throw error
     throw std::runtime_error("No position could be generated");
@@ -201,20 +215,22 @@ EnvStep Environment::reset()
     }
 
     // create new agents with new goals
-    int number_of_agents_ = number_of_agents;
-    auto agent_colors_    = agent_colors;
-    while (number_of_agents > 0)
-        remove_agent(number_of_agents-1);
+    for (int i=0; i < number_of_agents; i++)
+    {
+        float x_pos, y_pos;
+        std::tie(x_pos, y_pos) = generate_empty_position();
+        std::cout << "Random position: " << x_pos << ", " << y_pos << std::endl;
+        float angle = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * M_PI * 2;
+        agent_bodies[i]->SetTransform(b2Vec2(x_pos, y_pos), angle);
 
-    for (int i=0; i < number_of_agents_; i++)
-        add_agent();
-
-    // restore original agent colors
-    agent_colors = agent_colors_;
+        std::tie(x_pos, y_pos) = generate_empty_position();
+        goal_positions[i] = b2Vec2(x_pos, y_pos);
+    }
 
     done = false;
     episode_sim_time = 0.;
     current_steps = 0;
+    std::fill(collisions.begin(), collisions.end(), false);
 
     // get observations
     EnvStep out = step_physics();  // no movement, but calculate laser scans
@@ -224,18 +240,15 @@ EnvStep Environment::reset()
     return out;
 }
 
-int Environment::add_agent()
+void Environment::add_agent()
 {
     // create simulated body
     b2BodyDef bodyDef;
     bodyDef.type = b2_dynamicBody;
 
     // generate random starting position
-    int index = generate_empty_index();
-    int row = index / map_image_raw.size().width;
-    int col = index - row * map_image_raw.size().width;  // integer division
-    float x_pos = col + 0.5;
-    float y_pos = map_height - row - 0.5;
+    float x_pos, y_pos;
+    std::tie(x_pos, y_pos) = generate_empty_position();
     bodyDef.position.Set(x_pos, y_pos);
     bodyDef.angle = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * M_PI * 2;
     b2Body* body = world.CreateBody(&bodyDef);
@@ -254,11 +267,7 @@ int Environment::add_agent()
     agent_bodies.push_back(body);
 
     // generate random goal position
-    index = generate_empty_index();
-    row = index / map_image_raw.size().width;
-    col = index - row * map_image_raw.size().width;  // integer division
-    x_pos = col + 0.5;
-    y_pos = map_height - row - 0.5;
+    std::tie(x_pos, y_pos) = generate_empty_position();
     goal_positions.push_back(b2Vec2(x_pos, y_pos));
 
     // generate random color for agent
@@ -268,9 +277,6 @@ int Environment::add_agent()
     cv::Scalar agent_color(b, r, g);
     agent_colors.push_back(agent_color);
 
-    const int agent_index = number_of_agents;
-    number_of_agents++;
-
     // fill laser_scans
     LaserScan scan;
     scan.resize(laser_nrays);
@@ -279,27 +285,6 @@ int Environment::add_agent()
     collisions.push_back(false);
     agent_lin_vel.push_back(0);
     agent_ang_vel.push_back(0);
-
-    return agent_index;
-}
-
-void Environment::remove_agent(int agent_index)
-{
-    assert(agent_index >= 0 && agent_index < number_of_agents);
-
-    world.DestroyBody(agent_bodies[agent_index]);
-
-    agent_bodies.erase(agent_bodies.begin()+agent_index);
-    goal_positions.erase(goal_positions.begin()+agent_index);
-    agent_colors.erase(agent_colors.begin()+agent_index);
-    laser_scans.erase(laser_scans.begin()+agent_index);
-    collisions.erase(collisions.begin()+agent_index);
-    agent_lin_vel.erase(agent_lin_vel.begin()+agent_index);
-    agent_ang_vel.erase(agent_ang_vel.begin()+agent_index);
-
-    number_of_agents--;
-    if (number_of_agents == 0)
-        done = true;
 }
 
 EnvStep Environment::step_physics()
@@ -355,11 +340,8 @@ EnvStep Environment::step_physics()
 
             if (done)  // if done, generate new goal
             {
-                int index = generate_empty_index();
-                int row = index / map_image_raw.size().width;
-                int col = index - row * map_image_raw.size().width;  // integer division
-                float x_pos = col + 0.5;
-                float y_pos = map_height - row - 0.5;
+                float x_pos, y_pos;
+                std::tie(x_pos, y_pos) = generate_empty_position();
                 goal_positions[i] = b2Vec2(x_pos, y_pos);
 
                 reached_goal[i] = true;

@@ -20,7 +20,7 @@ class EnvironmentFixture : public testing::Test
         {
             std::string pkg_path = ros::package::getPath("mapf_environment");
             std::string image_path = pkg_path + "/maps/test_4x4.jpg";
-            environment = new Environment(image_path, /*physics_step_size=*/0.01, /*step_multiply/*/1);
+            environment = new Environment(image_path, /*number_of_agents=*/2, /*physics_step_size=*/0.01, /*step_multiply/*/1);
         }
 
         void TearDown() override
@@ -44,10 +44,6 @@ TEST_F(EnvironmentFixture, testMap)
     EXPECT_TRUE(environment->map_image_raw.at<uchar>(1, 0) < 125);
     EXPECT_EQ(environment->map_image.channels(), 3);
     EXPECT_EQ(environment->map_image.size().height, environment->render_height);
-
-    // cv::Mat map = environment->render();
-    // cv::imshow("test_4x4.jpg", map);
-    // cv::waitKey(0);
 }
 
 TEST_F(EnvironmentFixture, testPhysics)
@@ -93,53 +89,18 @@ TEST_F(EnvironmentFixture, testPhysics)
     EXPECT_TRUE(hit);
 }
 
-TEST_F(EnvironmentFixture, testAddAndRemoveAgent)
-{
-    EXPECT_EQ(environment->number_of_agents, 0);
-    int idx = environment->add_agent();
-    EXPECT_EQ(idx, 0);
-    EXPECT_EQ(environment->number_of_agents, 1);
-
-    EXPECT_TRUE(environment->agent_bodies[0]->GetLinearVelocity() == b2Vec2(0, 0));
-    EXPECT_TRUE(environment->agent_bodies[0]->GetAngularVelocity() == 0.);
-
-    EXPECT_EQ(1, environment->agent_bodies.size());
-    EXPECT_EQ(1, environment->goal_positions.size());
-    EXPECT_EQ(1, environment->agent_colors.size());
-    EXPECT_EQ(1, environment->agent_lin_vel.size());
-    EXPECT_EQ(1, environment->agent_ang_vel.size());
-    EXPECT_EQ(1, environment->collisions.size());
-    EXPECT_EQ(1, environment->laser_scans.size());
-
-    EXPECT_EQ(environment->laser_nrays, environment->laser_scans[0].size());
-
-    environment->remove_agent(0);
-    EXPECT_EQ(environment->number_of_agents, 0);
-
-    EXPECT_EQ(0, environment->agent_bodies.size());
-    EXPECT_EQ(0, environment->goal_positions.size());
-    EXPECT_EQ(0, environment->agent_colors.size());
-    EXPECT_EQ(0, environment->agent_lin_vel.size());
-    EXPECT_EQ(0, environment->agent_ang_vel.size());
-    EXPECT_EQ(0, environment->collisions.size());
-    EXPECT_EQ(0, environment->laser_scans.size());
-}
-
 TEST_F(EnvironmentFixture, testReset)
 {
     EXPECT_TRUE(environment->done);
-    environment->add_agent();
     environment->reset();
     EXPECT_FALSE(environment->done);
 }
 
 TEST_F(EnvironmentFixture, testContact)
 {
-    environment->add_agent();
     environment->reset();
 
-    EnvStep out;
-    out = environment->step_physics();
+    EnvStep out = environment->step_physics();
     EXPECT_FALSE(environment->collisions[0]);
 
     // test collision between agent and wall
@@ -152,7 +113,6 @@ TEST_F(EnvironmentFixture, testContact)
     EXPECT_TRUE(environment->collisions[0]);
 
     // test collision between agents
-    environment->add_agent();
     environment->reset();
     environment->agent_bodies[0]->SetTransform(b2Vec2(robot_radius+0.1, 4.-robot_radius-0.1), 0);
     environment->goal_positions[0].Set(4.-robot_radius, 4.-robot_radius);
@@ -185,7 +145,6 @@ TEST_F(EnvironmentFixture, testContact)
 
 TEST_F(EnvironmentFixture, testMovement)
 {
-    environment->add_agent();
     environment->reset();
 
     Action action;
@@ -207,7 +166,6 @@ TEST_F(EnvironmentFixture, testObservation)
     EXPECT_EQ(environment->goal_reaching_reward, 1.);
     EXPECT_EQ(environment->max_steps, 60);
 
-    environment->add_agent();
     environment->reset();
 
     Action action;
@@ -252,8 +210,6 @@ TEST_F(EnvironmentFixture, testRender)
     std::default_random_engine generator;
     std::normal_distribution<float> dist(0.9, 0.1);
 
-    environment->add_agent();
-    environment->add_agent();
     EnvStep env_obs = environment->reset();
 
     CollectiveAction actions;

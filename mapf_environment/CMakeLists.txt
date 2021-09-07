@@ -23,12 +23,6 @@ add_message_files(
   Observation.msg
 )
 
-add_service_files(
-  FILES
-  AddAgent.srv
-  RemoveAgent.srv
-)
-
 generate_messages(
   DEPENDENCIES
   std_msgs

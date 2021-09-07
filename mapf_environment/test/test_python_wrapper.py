@@ -19,7 +19,7 @@ def make_env():
     pkg_path = rospkg.RosPack().get_path(pkg)
     img_path = os.path.join(pkg_path, 'maps', 'test_4x4.jpg')
 
-    return Env(img_path)
+    return Env(img_path, 2)
 
 
 class TestWrapper(unittest.TestCase):
@@ -41,22 +41,12 @@ class TestWrapper(unittest.TestCase):
         # constructor
         env = make_env()
 
-        # add_agent
-        self.assertEqual(env.add_agent(), 0)
-        self.assertEqual(env.add_agent(), 1)
-        self.assertEqual(env.add_agent(), 2)
-
         # reset
         env_obs = env.reset()
-
-        # remove_agent
-        env.remove_agent(2)
-        self.assertEqual(env.get_number_of_agents(), 2)
-
         self.assertFalse(env.is_done())
-        from mapf_env import Point
 
         # render && step
+        from mapf_env import Point
         while not env_obs.done:
             env.render(10)
             p1 = Point()

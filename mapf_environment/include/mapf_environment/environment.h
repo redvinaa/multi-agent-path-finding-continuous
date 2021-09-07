@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <random>
+#include <utility>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <gtest/gtest.h>
@@ -72,10 +73,17 @@ class Environment
 
         /*! \brief Randomly find an empty place on the map (no obstacles and no other agents nearby)
          *
-         * \return The flattened (row*image_width + col) index of the cell that is found to be free.
+         * \return The position of the center of the empty cell
          * \exception std::runtime_error Raised if no free cells are found
          */
-        int generate_empty_index(void) const;
+        std::pair<float, float> generate_empty_position(void) const;
+
+        /*! \brief Create an agent with physics, random starting and goal positions
+         *
+         * \sa generate_empty_index()
+         * \return Index of the new agent (starting from 0)
+         */
+        void add_agent();
 
         /*! \brief Step physics, calculate observations (incl. scans, collisions)
          *
@@ -158,6 +166,7 @@ class Environment
          * \sa init_map(), init_physics()
          */
         Environment(std::string _map_path,
+            int          _number_of_agents     = 2,
             float        _physics_step_size    = 0.01,
             int          _step_multiply        = 50,
             float        _laser_max_angle      = 45.*M_PI/180.,
@@ -180,20 +189,6 @@ class Environment
          * \return First observation
          */
         EnvStep reset();
-
-        /*! \brief Create an agent with physics, random starting and goal positions
-         *
-         * \sa generate_empty_index()
-         * \return Index of the new agent (starting from 0)
-         */
-        int add_agent();
-
-        /*! \brief Remove the given agent and its goal from the simulation
-         *
-         * \sa generate_empty_index()
-         * \return Index of the new agent (starting from 0)
-         */
-        void remove_agent(int agent_index);
 
         /*! \brief Draw the obstacles, agents, goals, optionally
          * the raycasts, and show collisions as well
