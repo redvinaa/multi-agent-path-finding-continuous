@@ -104,8 +104,9 @@ bool RosEnvironment::add_agent(mapf_environment::AddAgentRequest& req, mapf_envi
 bool RosEnvironment::remove_agent(mapf_environment::RemoveAgentRequest& req, mapf_environment::RemoveAgentResponse& res)
 {
     env->remove_agent(req.agent_index);
+    if (env->is_done())  // if no more agents, done is true
+        physics_timer.stop();
 
-    assert(env->get_number_of_agents() > req.agent_index);
     observation_publishers.erase(observation_publishers.begin() + req.agent_index);
     action_subscribers.erase(action_subscribers.begin() + req.agent_index);
 
@@ -137,6 +138,9 @@ mapf_environment::Observation RosEnvironment::convert_observation(Observation ob
 
 void RosEnvironment::step(const ros::TimerEvent&)
 {
+    if (env->get_number_of_agents() == 0)
+        return;
+
     if (env->is_done())
     {
         ROS_INFO("Episode is over, resetting...");

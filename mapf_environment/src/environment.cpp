@@ -200,10 +200,6 @@ EnvStep Environment::reset()
         throw std::runtime_error("Add agents before resetting environment");
     }
 
-    done = false;
-    episode_sim_time = 0.;
-    current_steps = 0;
-
     // create new agents with new goals
     int number_of_agents_ = number_of_agents;
     auto agent_colors_    = agent_colors;
@@ -215,6 +211,10 @@ EnvStep Environment::reset()
 
     // restore original agent colors
     agent_colors = agent_colors_;
+
+    done = false;
+    episode_sim_time = 0.;
+    current_steps = 0;
 
     // get observations
     EnvStep out = step_physics();  // no movement, but calculate laser scans
@@ -292,11 +292,14 @@ void Environment::remove_agent(int agent_index)
     agent_bodies.erase(agent_bodies.begin()+agent_index);
     goal_positions.erase(goal_positions.begin()+agent_index);
     agent_colors.erase(agent_colors.begin()+agent_index);
-    number_of_agents--;
     laser_scans.erase(laser_scans.begin()+agent_index);
     collisions.erase(collisions.begin()+agent_index);
     agent_lin_vel.erase(agent_lin_vel.begin()+agent_index);
     agent_ang_vel.erase(agent_ang_vel.begin()+agent_index);
+
+    number_of_agents--;
+    if (number_of_agents == 0)
+        done = true;
 }
 
 EnvStep Environment::step_physics()
