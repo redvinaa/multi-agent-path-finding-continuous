@@ -453,7 +453,7 @@ cv::Mat Environment::get_rendered_pic()
         if (collisions[i])
         {
             // arrow
-            cv::fillPoly(rendered_image, ppt, npt, 1, agent_colors[i]);
+            cv::fillPoly(rendered_image, ppt, npt, 1, cv::Scalar(0, 0, 0));
 
             // small circle
             cv::circle(rendered_image, center, static_cast<int>(inner_radius*scale_factor), agent_colors[i], -1);
