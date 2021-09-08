@@ -134,3 +134,4 @@ devel
 
 doc/*
 libtorch/
+*settings.ini
