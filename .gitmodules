@@ -1,6 +1,3 @@
 [submodule "MAAC"]
 	path = MAAC
 	url = https://github.com/shariqiqbal2810/MAAC
-[submodule "Multi_Agent_Soft_Actor_Critic"]
-	path = Multi_Agent_Soft_Actor_Critic
-	url = https://github.com/adithya-subramanian/Multi_Agent_Soft_Actor_Critic.git
