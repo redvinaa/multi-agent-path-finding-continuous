@@ -20,7 +20,8 @@ class EnvironmentFixture : public testing::Test
         {
             std::string pkg_path = ros::package::getPath("mapf_environment");
             std::string image_path = pkg_path + "/maps/test_4x4.jpg";
-            environment = new Environment(image_path, /*number_of_agents=*/2, /*physics_step_size=*/0.01, /*step_multiply/*/1);
+            environment =
+                new Environment(image_path, /*number_of_agents=*/2, /*physics_step_size=*/0.01, /*step_multiply/*/1);
         }
 
         void TearDown() override

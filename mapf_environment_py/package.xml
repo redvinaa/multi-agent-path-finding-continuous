@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>mapf_environment_py</name>
+  <version>0.0.0</version>
+  <description>The mapf_environment_py package</description>
+
+  <maintainer email="vince@todo.todo">vince</maintainer>
+  <license>TODO</license>
+
+  <doc_depend>doxygen</doc_depend>
+  <buildtool_depend>catkin</buildtool_depend>
+  <test_depend>rosunit</test_depend>
+  <depend>roslint</depend>
+  <depend>pybind11_catkin</depend>
+  <depend>mapf_environment</depend>
+
+  <export>
+  </export>
+</package>

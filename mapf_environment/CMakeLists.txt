@@ -4,7 +4,6 @@ project(mapf_environment)
 set(CMAKE_CXX_STANDARD 14)
 
 find_package(catkin REQUIRED COMPONENTS
-  pybind11_catkin
   roslib
   roslint
   roscpp
@@ -40,8 +39,8 @@ include_directories(
 
 catkin_package(
  INCLUDE_DIRS include
- LIBRARIES mapf_environment mapf_env
- CATKIN_DEPENDS pybind11_catkin roslib roslint roscpp sensor_msgs geometry_msgs image_transport cv_bridge
+ LIBRARIES ${PROJECT_NAME}_lib
+ CATKIN_DEPENDS roslib roslint roscpp sensor_msgs geometry_msgs image_transport cv_bridge
  DEPENDS box2d OpenCV
 )
 
@@ -54,12 +53,9 @@ add_executable(${PROJECT_NAME}_node src/ros_wrapper_node.cpp src/environment_wra
 target_link_libraries(${PROJECT_NAME}_node PUBLIC ${PROJECT_NAME}_lib)
 set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME environment_node)
 
-pybind_add_module(mapf_env MODULE src/python_wrapper.cpp)
-target_link_libraries(mapf_env PUBLIC ${PROJECT_NAME}_lib)
 
-
-## Mark library for installation, executable and python module
-install(TARGETS ${PROJECT_NAME}_lib ${PROJECT_NAME}_node mapf_env
+## Mark library for installation and executable
+install(TARGETS ${PROJECT_NAME}_lib ${PROJECT_NAME}_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
@@ -75,8 +71,6 @@ install(DIRECTORY include/${PROJECT_NAME}/
 # testing
 catkin_add_gtest(${PROJECT_NAME}-test test/test_environment.cpp)
 target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME}_lib ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES})
-
-catkin_add_nosetests(test/test_python_wrapper.py)
 
 # linting
 roslint_cpp()

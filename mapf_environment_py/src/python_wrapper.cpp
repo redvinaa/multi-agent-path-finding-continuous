@@ -3,7 +3,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include "mapf_environment/environment.h"
-#include <opencv2/opencv.hpp>
 #include <string>
 
 namespace py = pybind11;

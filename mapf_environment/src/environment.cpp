@@ -219,7 +219,6 @@ EnvStep Environment::reset()
     {
         float x_pos, y_pos;
         std::tie(x_pos, y_pos) = generate_empty_position();
-        std::cout << "Random position: " << x_pos << ", " << y_pos << std::endl;
         float angle = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * M_PI * 2;
         agent_bodies[i]->SetTransform(b2Vec2(x_pos, y_pos), angle);
 
