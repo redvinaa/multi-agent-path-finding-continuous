@@ -147,6 +147,7 @@ class Environment
         /*! \brief Sets the default parameters, and calls init_map() and init_physics()
          *
          * \param _map_path Map image to load
+         * \param _number_of_agents Set number of agents to generate
          * \param _physics_step_size Time delta for the physics engine
          * \param _step_multiply When step_physics() gets called, step the environment this many times
          * \param _laser_max_angle The angle of the laser raycast from the centerline
@@ -158,6 +159,7 @@ class Environment
          * \param _laser_nrays Number of rays for the raycast
          * \param _max_steps The episode is ended after this many steps
          * \param _draw_laser Wether to show the raycasts on the rendered image
+         * \param _draw_noisy_pose Wether to show on rendering the agents' position with noise
          * \param _goal_reaching_reward Reward for reaching the goal (only if all the other agents reach their goal too)
          * \param _collision_reward Added reward in the case of a collision
          * \param _step_reward Reward added in every step, except when the goal is reached

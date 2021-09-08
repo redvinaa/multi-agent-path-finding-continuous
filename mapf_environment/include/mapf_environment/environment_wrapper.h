@@ -19,6 +19,7 @@
 #include <memory>
 
 
+/*! \brief Executable ros wrapper for the Environment */
 class RosEnvironment
 {
     private:
