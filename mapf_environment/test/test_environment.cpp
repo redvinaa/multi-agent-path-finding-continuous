@@ -101,7 +101,7 @@ TEST_F(EnvironmentFixture, testContact)
 {
     environment->reset();
 
-    EnvStep out = environment->step_physics();
+    auto out = environment->step_physics();
     EXPECT_FALSE(environment->collisions[0]);
 
     // test collision between agent and wall
@@ -125,9 +125,9 @@ TEST_F(EnvironmentFixture, testContact)
     // 0.1/(2*0.01)=5 time steps for them to collide.
     // Actually after 5 steps, they almost collide, so it takes a 6th step for them to do so
 
-    Action action;
-    action.x = 1;
-    action.z = 0;
+    std::vector<float> action(2);
+    action[0] = 1;
+    action[1] = 0;
     environment->process_action(0, action);
     environment->process_action(1, action);
 
@@ -148,9 +148,9 @@ TEST_F(EnvironmentFixture, testMovement)
 {
     environment->reset();
 
-    Action action;
-    action.x = 1;
-    action.z = -0.5;
+    std::vector<float> action(2);
+    action[0] = 1;
+    action[1] = -0.5;
     environment->process_action(0, action);
 
     environment->step_physics();
@@ -169,14 +169,14 @@ TEST_F(EnvironmentFixture, testObservation)
 
     environment->reset();
 
-    Action action;
-    action.x = 1;
-    action.z = -0.5;
-    CollectiveAction actions = {action};
+    std::vector<float> action(2);
+    action[0] = 1;
+    action[1] = -0.5;
+    std::vector<std::vector<float>> actions = {action, action};
 
-    EnvStep env_obs = environment->step(actions);
+    auto env_step = environment->step(actions);
 
-    b2Vec2 agent_pose(env_obs.observations[0].agent_pose.x, env_obs.observations[0].agent_pose.y);
+    b2Vec2 agent_pose(std::get<0>(env_step)[0][0], std::get<0>(env_step)[0][1]);
     // b2Transform agent_tf_expected = environment->agent_bodies[0]->GetTransform();
     // EXPECT_EQ(agent_pose, agent_tf_expected.p);  // not true because of noise
 
@@ -184,26 +184,24 @@ TEST_F(EnvironmentFixture, testObservation)
     // EXPECT_EQ(env_obs.observations[0].agent_twist.x, 1);
     // EXPECT_EQ(env_obs.observations[0].agent_twist.y, 0);
     // EXPECT_EQ(env_obs.observations[0].agent_twist.z, -0.5);
-    EXPECT_EQ(env_obs.observations[0].reward, environment->step_reward);
-    EXPECT_EQ(env_obs.done, false);
+    EXPECT_EQ(std::get<1>(env_step)[0], environment->step_reward);
+    EXPECT_EQ(std::get<2>(env_step)[0], false);
 
     // test collision reward
     float robot_radius = environment->robot_radius;
     environment->agent_bodies[0]->SetTransform(b2Vec2(robot_radius, 4.-robot_radius), 0);
     environment->goal_positions[0].Set(4.-robot_radius, 4.-robot_radius);
 
-    env_obs = environment->step_physics();
+    auto obs_and_rewards = environment->step_physics();
     EXPECT_TRUE(environment->collisions[0]);
 
-    EXPECT_TRUE(std::abs(env_obs.observations[0].reward - (-0.6)) < 0.01);
+    EXPECT_TRUE(std::abs(std::get<1>(obs_and_rewards)[0] - (-0.6)) < 1e-3);
 
     // test goal reaching reward
     environment->agent_bodies[0]->SetTransform(environment->goal_positions[0], 0);
-    environment->step_physics();
-    env_obs.observations[0] = environment->get_observation(0, environment->collisions[0]);
-    env_obs.done = environment->done;
-    EXPECT_EQ(env_obs.done, false);
-    EXPECT_EQ(env_obs.observations[0].reward, 1.);
+    obs_and_rewards = environment->step_physics();
+    EXPECT_EQ(environment->is_done(), false);
+    EXPECT_EQ(std::get<1>(obs_and_rewards)[0], 1.);
 }
 
 TEST_F(EnvironmentFixture, testRender)
@@ -211,34 +209,23 @@ TEST_F(EnvironmentFixture, testRender)
     std::default_random_engine generator;
     std::normal_distribution<float> dist(0.9, 0.1);
 
-    EnvStep env_obs = environment->reset();
+    auto obs = environment->reset();
 
-    CollectiveAction actions;
-    actions.resize(2);
+    std::vector<std::vector<float>> actions(2);
 
-    while (!env_obs.done)
+    while (!environment->is_done())
     {
         environment->render(10);
 
         for (auto& a : actions)
         {
-            a.x = std::min(static_cast<double>(dist(generator)), 1.);
-            a.z = std::min(static_cast<double>(dist(generator)), M_PI/2);
+            a.resize(2);
+            a[0] = std::min(static_cast<double>(dist(generator)), 1.);
+            a[1] = std::min(static_cast<double>(dist(generator)), M_PI/2);
         }
 
-        env_obs = environment->step(actions);
+        environment->step(actions);
     }
-}
-
-TEST_F(EnvironmentFixture, testSerialize)
-{
-    environment->add_agent();
-    environment->reset();
-    auto obs = environment->get_observation(0, false);
-    obs.reward = 0;
-    auto ser_obs = Environment::serialize_observation(obs);
-    EXPECT_TRUE(obs.agent_pose.x == Environment::deserialize_observation(ser_obs).agent_pose.x);
-    EXPECT_TRUE(obs.scan[0] == Environment::deserialize_observation(ser_obs).scan[0]);
 }
 
 

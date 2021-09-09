@@ -7,7 +7,6 @@
 #include "ros/ros.h"
 #include "std_srvs/Empty.h"
 #include "geometry_msgs/Twist.h"
-#include "mapf_environment/Observation.h"
 #include "sensor_msgs/LaserScan.h"
 #include "image_transport/image_transport.h"
 #include "cv_bridge/cv_bridge.h"
@@ -33,10 +32,7 @@ class RosEnvironment
 
         std::shared_ptr<Environment> env;
         std::string map_path;
-        CollectiveAction coll_action;
-
-        /*! \brief Convert from struct Observation to mapf_environment::Observation (ROS) */
-        static mapf_environment::Observation convert_observation(Observation obs);
+        std::vector<std::vector<float>> coll_action;
 
         /*! \brief Step Environment, publish observations, sim_time and rendered image */
         void step(const ros::TimerEvent&);

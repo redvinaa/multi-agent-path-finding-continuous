@@ -11,28 +11,6 @@ PYBIND11_MODULE(mapf_env, m)
 {
     m.doc() = "Multi-agent path finding environment python wrapper";
 
-    py::class_<Point>(m, "Point", "Stores a 3D point: x, y, z")
-        .def(py::init<>())
-        .def_readwrite("x", &Point::x)
-        .def_readwrite("y", &Point::y)
-        .def_readwrite("z", &Point::z);
-
-    py::class_<Observation>(m, "Observation", "Data observed by a single agent at every step")
-        .def_readwrite("agent_pose", &Observation::agent_pose,
-            "x and y stores the position, z the angle of an agent")
-        .def_readwrite("agent_twist", &Observation::agent_twist,
-            "x stores the linear, z the angular velocity")
-        .def_readwrite("goal_pose", &Observation::goal_pose,
-            "Only x and y is used, as position")
-        .def_readwrite("scan", &Observation::scan,
-            "Vector to store ranges of the lidar")
-        .def_readwrite("reward", &Observation::reward,
-            "Reward received after the previous step");
-
-    py::class_<EnvStep>(m, "EnvStep", "Data returned from the Environment after calling step")
-        .def_readwrite("observations", &EnvStep::observations, "Observations of all the agents")
-        .def_readwrite("done", &EnvStep::done, "Whether the episode is done");
-
     py::class_<Environment>(m, "Environment", "Environment for multi-agent path finding simulation")
     .def(py::init<std::string, int, float, int, float, float, float, int, int, int, int, int,
         bool, bool, float, float, float, float, unsigned int>(),
@@ -69,9 +47,5 @@ PYBIND11_MODULE(mapf_env, m)
     .def("get_episode_sim_time", &Environment::get_episode_sim_time,
         "How much time has passed in the simulation since the start of the episode")
     .def("get_observation_size", &Environment::get_observation_size,
-        "Calculate how many relevant elements an observation has")
-    .def_static("serialize_observation", &Environment::serialize_observation,
-        "Take the Observation structure an put the relevant data in a float vector (STRIPS REWARD)")
-    .def_static("deserialize_observation", &Environment::deserialize_observation,
-        "Take the observation data as a float vecto and construct an Observation object out of it (REWARD IS EMPTY)");
+        "Calculate how many relevant elements an observation has");
 }

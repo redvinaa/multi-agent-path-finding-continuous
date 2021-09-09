@@ -2,11 +2,11 @@
 
 #include "mapf_environment/environment.h"
 #include "mapf_environment/raycast_callback.h"
-#include "mapf_environment/types.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <box2d/box2d.h>
 #include <vector>
+#include <tuple>
 #include <string>
 #include <utility>
 #include <stdexcept>
@@ -65,12 +65,13 @@ Environment::Environment(std::string _map_path,
     std::srand(seed);
     assert(robot_diam < 1.);
     assert(number_of_agents > 0);
+    assert(laser_nrays > 0);
 
     robot_radius = robot_diam/2;
     init_map();  // load map before physics
     init_physics();
 
-    for (int i=0; i < _number_of_agents; i++)
+    for (int i=0; i < number_of_agents; i++)
         add_agent();
 }
 
@@ -152,8 +153,7 @@ std::pair<float, float> Environment::generate_empty_position() const
 {
     // number of (flattened) indices on the grid map
     int num_index = map_image_raw.size().width * map_image_raw.size().height;
-    std::vector<int> map_indices;
-    map_indices.resize(num_index);
+    std::vector<int> map_indices(num_index);
     for (int i=0; i < num_index; i++)
     {
         map_indices[i] = i;
@@ -207,7 +207,7 @@ std::pair<float, float> Environment::generate_empty_position() const
     throw std::runtime_error("No position could be generated");
 }
 
-EnvStep Environment::reset()
+std::vector<std::vector<float>> Environment::reset()
 {
     if (number_of_agents < 1)
     {
@@ -232,9 +232,15 @@ EnvStep Environment::reset()
     std::fill(collisions.begin(), collisions.end(), false);
 
     // get observations
-    EnvStep out = step_physics();  // no movement, but calculate laser scans
-    last_env_step = out;  // save observations for rendering
-    out.done = false;
+    auto obs_and_rewards = step_physics();  // no movement, but calculate laser scans
+    last_observation = std::get<0>(obs_and_rewards);  // save observations for rendering
+
+    std::vector<std::vector<float>> out(number_of_agents);
+    for (int i=0; i < number_of_agents; i++)
+    {
+        out[i].resize(get_observation_size());
+        out[i] = std::get<0>(obs_and_rewards)[i];
+    }
 
     return out;
 }
@@ -277,23 +283,27 @@ void Environment::add_agent()
     agent_colors.push_back(agent_color);
 
     // fill laser_scans
-    LaserScan scan;
-    scan.resize(laser_nrays);
+    std::vector<float> scan(laser_nrays);
+    std::fill(scan.begin(), scan.end(), 0.);
     laser_scans.push_back(scan);
 
     collisions.push_back(false);
-    agent_lin_vel.push_back(0);
-    agent_ang_vel.push_back(0);
+    current_actions.resize(number_of_agents);
+    for (auto& act : current_actions)
+    {
+        act.push_back(0);
+        act.push_back(0);
+    }
 }
 
-EnvStep Environment::step_physics()
+std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::step_physics()
 {
     if (done == true)
         throw std::runtime_error("Attempted to step environment that is finished. Call reset() first");
 
     std::fill(collisions.begin(), collisions.end(), false);
 
-    std::vector<bool> reached_goal(get_number_of_agents());
+    std::vector<bool> reached_goal(number_of_agents);
     std::fill(reached_goal.begin(), reached_goal.end(), false);
 
     /* Step env step_multily number of times, and calculate collisions
@@ -307,8 +317,9 @@ EnvStep Environment::step_physics()
             b2Body* agent = agent_bodies[i];
             float angle = agent->GetAngle();
 
-            agent->SetLinearVelocity(b2Vec2(agent_lin_vel[i]*std::cos(angle), agent_lin_vel[i]*std::sin(angle)));
-            agent->SetAngularVelocity(agent_ang_vel[i]);
+            agent->SetLinearVelocity(b2Vec2(current_actions[i][0]*std::cos(angle),
+                current_actions[i][0]*std::sin(angle)));
+            agent->SetAngularVelocity(current_actions[i][1]);
         }
 
         world.Step(physics_step_size, velocity_iterations, position_iterations);
@@ -376,15 +387,19 @@ EnvStep Environment::step_physics()
         }
     }
 
-    EnvStep out;
+    std::tuple<std::vector<std::vector<float>>, std::vector<float>> obs_and_rewards;
+    std::get<0>(obs_and_rewards).resize(number_of_agents);
+    std::get<1>(obs_and_rewards).resize(number_of_agents);
 
     // get observations
     for (int i=0; i < number_of_agents; i++)
     {
-        out.observations.push_back(get_observation(i, reached_goal[i]));
+        auto single_obs_and_reward = get_observation(i, reached_goal[i]);
+        std::get<0>(obs_and_rewards)[i] = std::get<0>(single_obs_and_reward);
+        std::get<1>(obs_and_rewards)[i] = std::get<1>(single_obs_and_reward);
     }
 
-    return out;
+    return obs_and_rewards;
 }
 
 cv::Mat Environment::get_rendered_pic()
@@ -464,8 +479,9 @@ cv::Mat Environment::get_rendered_pic()
 
         if (draw_noisy_pose)
         {
-            auto noisy_pose = last_env_step.observations[i].agent_pose;
-            cv::Point noisy_center(noisy_pose.x*scale_factor, render_height-noisy_pose.y*scale_factor);
+            float noisy_pose_x = last_observation[i][0];
+            float noisy_pose_y = last_observation[i][1];
+            cv::Point noisy_center(noisy_pose_x*scale_factor, render_height-noisy_pose_y*scale_factor);
             cv::circle(rendered_image, noisy_center, static_cast<int>(noisy_pose_radius*scale_factor),
                 cv::Scalar(0, 0, 0), 2);
             cv::circle(rendered_image, noisy_center, static_cast<int>(noisy_pose_radius*scale_factor),
@@ -497,44 +513,56 @@ void Environment::render(int wait)
     cv::waitKey(wait);
 }
 
-EnvStep Environment::step(std::vector<Action> actions)
+std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool>>
+    Environment::step(std::vector<std::vector<float>> actions)
 {
+    assert(actions.size() == number_of_agents);
+    for (auto act : actions)
+        assert(act.size() == 2);
+
     // process actions
     for (int i=0; i < number_of_agents; i++)
-        process_action(i, actions[i]);
-
-    EnvStep out = step_physics();
-    last_env_step = out;  // save observations for rendering
-
-    current_steps++;
-    if (current_steps >= max_steps)
     {
-        done = true;
-        out.done = true;
+        process_action(i, actions[i]);
     }
-    else
-        out.done = false;
 
-    return out;
+    std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool>> ret;
+    std::get<0>(ret).resize(number_of_agents);
+    std::get<1>(ret).resize(number_of_agents);
+    std::get<2>(ret).resize(number_of_agents);
+
+    auto obs_and_reward = step_physics();
+    last_observation = std::get<0>(obs_and_reward);  // save observations for rendering
+    current_steps++;
+
+    for (int i=0; i < number_of_agents; i++)
+    {
+        std::get<0>(ret)[i] = std::get<0>(obs_and_reward)[i];
+        std::get<1>(ret)[i] = std::get<1>(obs_and_reward)[i];
+    }
+
+    // set done
+    if (current_steps >= max_steps)
+        done = true;
+
+    std::fill(std::get<2>(ret).begin(), std::get<2>(ret).end(), done);
+
+    return ret;
 }
 
-void Environment::process_action(int agent_index, Action action)
+void Environment::process_action(int agent_index, std::vector<float> action)
 {
-    float eps = 1e-3;
-    assert(std::abs(action.x) < 1. + eps);      // max 1 m/s
-    assert(std::abs(action.z) < M_PI/2 + eps);  // max 90 deg/s
+    assert(action.size() == 2);
+    assert(std::abs(action[0]) < 1.     + 1e-3);  // max 1 m/s
+    assert(std::abs(action[1]) < M_PI/2 + 1e-3);  // max 90 deg/s
 
-    agent_lin_vel[agent_index] = action.x;
-    agent_ang_vel[agent_index] = action.z;
+    current_actions[agent_index] = action;
 }
 
-Observation Environment::get_observation(int agent_index, bool reached_goal)
+std::tuple<std::vector<float>, float> Environment::get_observation(int agent_index, bool reached_goal)
 {
     b2Body* agent = agent_bodies[agent_index];
-    Observation obs;
-
-    // scan
-    obs.scan = laser_scans[agent_index];
+    std::tuple<std::vector<float>, float> obs_and_reward;
 
     // position
     b2Vec2 position = agent_bodies[agent_index]->GetPosition();
@@ -543,34 +571,40 @@ Observation Environment::get_observation(int agent_index, bool reached_goal)
     yaw = std::max(yaw, static_cast<float>(0.));  // normalize angle between 0 and pi
     yaw = std::min(yaw, static_cast<float>(M_PI));
 
-    obs.agent_pose.x = position.x + dist(generator);
-    obs.agent_pose.y = position.y + dist(generator);
-    obs.agent_pose.z = yaw        + dist(generator);
+    std::get<0>(obs_and_reward).push_back(position.x + dist(generator));
+    std::get<0>(obs_and_reward).push_back(position.y + dist(generator));
+    std::get<0>(obs_and_reward).push_back(yaw        + dist(generator));
 
     // twist
     b2Vec2 vel = agent->GetLinearVelocity();
     float ang_vel = agent->GetAngularVelocity();
-    obs.agent_twist.x = vel.x;
-    obs.agent_twist.y = vel.y;
-    obs.agent_twist.z = ang_vel;
+    std::get<0>(obs_and_reward).push_back(vel.x);
+    std::get<0>(obs_and_reward).push_back(vel.y);
+    std::get<0>(obs_and_reward).push_back(ang_vel);
 
     // goal pose
-    obs.goal_pose.x = goal_positions[agent_index].x;
-    obs.goal_pose.y = goal_positions[agent_index].y;
+    std::get<0>(obs_and_reward).push_back(goal_positions[agent_index].x);
+    std::get<0>(obs_and_reward).push_back(goal_positions[agent_index].y);
+
+    // scan
+    std::get<0>(obs_and_reward).insert(std::get<0>(obs_and_reward).end(),
+        laser_scans[agent_index].begin(), laser_scans[agent_index].end());
 
     // reward and done
+    float reward;
     if (reached_goal)
     {
-        obs.reward = goal_reaching_reward;
+        reward = goal_reaching_reward;
     }
     else
     {
-        obs.reward = step_reward;
+        reward = step_reward;
         if (collisions[agent_index])
-            obs.reward += collision_reward;
+            reward += collision_reward;
     }
+    std::get<1>(obs_and_reward) = reward;
 
-    return obs;
+    return obs_and_reward;
 }
 
 bool Environment::is_done() const
@@ -591,50 +625,4 @@ float Environment::get_episode_sim_time() const
 int Environment::get_observation_size() const
 {
     return 7 + laser_nrays;
-}
-
-std::vector<float> Environment::serialize_observation(Observation obs)
-{
-    std::vector<float> serialized;
-
-    // pose
-    serialized.push_back(obs.agent_pose.x);
-    serialized.push_back(obs.agent_pose.y);
-    serialized.push_back(obs.agent_pose.z);
-
-    // twist
-    serialized.push_back(obs.agent_twist.x);
-    serialized.push_back(obs.agent_twist.z);
-
-    // goal
-    serialized.push_back(obs.goal_pose.x);
-    serialized.push_back(obs.goal_pose.y);
-
-    // scan
-    serialized.insert(serialized.end(), obs.scan.begin(), obs.scan.end());
-
-    return serialized;
-}
-
-Observation Environment::deserialize_observation(std::vector<float> obs)
-{
-    Observation deserialized;
-
-    // pose
-    deserialized.agent_pose.x = obs[0];
-    deserialized.agent_pose.y = obs[1];
-    deserialized.agent_pose.z = obs[2];
-
-    // twist
-    deserialized.agent_twist.x = obs[3];
-    deserialized.agent_twist.z = obs[4];
-
-    // goal
-    deserialized.goal_pose.x = obs[5];
-    deserialized.goal_pose.y = obs[6];
-
-    // scan
-    deserialized.scan.insert(deserialized.scan.begin(), obs.begin()+7, obs.end());
-
-    return deserialized;
 }

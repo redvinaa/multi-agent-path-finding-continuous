@@ -7,27 +7,13 @@ find_package(catkin REQUIRED COMPONENTS
   roslib
   roslint
   roscpp
-  sensor_msgs
   geometry_msgs
-  message_generation
   image_transport
   cv_bridge
 )
 
 find_package(OpenCV 3.2 REQUIRED)
 find_package(box2d REQUIRED)
-
-add_message_files(
-  FILES
-  Observation.msg
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  geometry_msgs
-  sensor_msgs
-)
 
 include_directories(
   include
@@ -40,7 +26,7 @@ include_directories(
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES ${PROJECT_NAME}_lib
- CATKIN_DEPENDS roslib roslint roscpp sensor_msgs geometry_msgs image_transport cv_bridge
+ CATKIN_DEPENDS roslib roslint roscpp geometry_msgs image_transport cv_bridge
  DEPENDS box2d OpenCV
 )
 

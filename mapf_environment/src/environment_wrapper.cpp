@@ -5,8 +5,10 @@
 #include <ros/package.h>
 #include <std_srvs/Empty.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/MultiArrayLayout.h>
+#include <std_msgs/MultiArrayDimension.h>
+#include <std_msgs/Float32MultiArray.h>
 #include <geometry_msgs/Twist.h>
-#include <mapf_environment/Observation.h>
 #include <sensor_msgs/LaserScan.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -65,9 +67,12 @@ RosEnvironment::RosEnvironment(ros::NodeHandle _nh):
     physics_timer = nh.createTimer(ros::Duration(physics_step_size), &RosEnvironment::step, this);
 
     coll_action.resize(env->get_number_of_agents());
+    for (auto& act : coll_action)
+        act.resize(2);
+
     for (int agent_index=0; agent_index < number_of_agents; agent_index++)
     {
-        ros::Publisher observation_publisher = nh.advertise<mapf_environment::Observation>(
+        ros::Publisher observation_publisher = nh.advertise<std_msgs::Float32MultiArray>(
             "agent_"+std::to_string(agent_index)+"/observation", 1);
         observation_publishers.push_back(observation_publisher);
 
@@ -78,28 +83,6 @@ RosEnvironment::RosEnvironment(ros::NodeHandle _nh):
     }
 
     ROS_INFO("Initialized environment");
-}
-
-mapf_environment::Observation RosEnvironment::convert_observation(Observation obs)
-{
-    mapf_environment::Observation ros_obs;
-
-    ros_obs.agent_pose.x = obs.agent_pose.x;
-    ros_obs.agent_pose.y = obs.agent_pose.y;
-    ros_obs.agent_pose.z = obs.agent_pose.z;
-
-    ros_obs.agent_twist.x = obs.agent_twist.x;
-    ros_obs.agent_twist.y = obs.agent_twist.y;
-    ros_obs.agent_twist.z = obs.agent_twist.z;
-
-    ros_obs.goal_pose.x = obs.goal_pose.x;
-    ros_obs.goal_pose.y = obs.goal_pose.y;
-    ros_obs.goal_pose.z = obs.goal_pose.z;
-
-    ros_obs.scan.ranges = obs.scan;
-    ros_obs.reward = obs.reward;
-
-    return ros_obs;
 }
 
 void RosEnvironment::step(const ros::TimerEvent&)
@@ -113,12 +96,14 @@ void RosEnvironment::step(const ros::TimerEvent&)
     std::cout << "====================" << std::endl;
     std::cout << "Sim time: " << env->get_episode_sim_time() << std::endl;
 
-    EnvStep env_step = env->step(coll_action);
+    auto env_step = env->step(coll_action);
+    std::cout << "I'm alive!" << std::endl;
+    auto rewards  = std::get<1>(env_step);
     std::string info;
     info += "Rewards: ";
-    for (auto obs : env_step.observations)
+    for (auto rew : rewards)
     {
-        info += "  " + std::to_string(obs.reward);
+        info += "  " + std::to_string(rew);
     }
 
     std::cout << info << std::endl;
@@ -129,17 +114,20 @@ void RosEnvironment::step(const ros::TimerEvent&)
     cv_img.image = env->get_rendered_pic();
     render_publisher.publish(cv_img.toImageMsg());
 
+    auto observations = std::get<0>(env_step);
     for (int agent_index=0; agent_index < env->get_number_of_agents(); agent_index++)
     {
-        mapf_environment::Observation obs = convert_observation(env_step.observations[agent_index]);
-        observation_publishers[agent_index].publish(obs);
+        std_msgs::Float32MultiArray ros_obs;
+        ros_obs.data.clear();
+        ros_obs.data = observations[agent_index];
+        observation_publishers[agent_index].publish(ros_obs);
     }
 }
 
 void RosEnvironment::process_action(int agent_index, const geometry_msgs::TwistConstPtr& action)
 {
     if (std::abs(action->linear.x) < 1.)
-        coll_action[agent_index].x = action->linear.x;
+        coll_action[agent_index][0] = action->linear.x;
     else
     {
         ROS_WARN_STREAM("Received linear velocity greater than 1 m/s ("
@@ -147,14 +135,14 @@ void RosEnvironment::process_action(int agent_index, const geometry_msgs::TwistC
             << "), trimming");
         if (action->linear.x > 0)
         {
-            coll_action[agent_index].x = 1.;
+            coll_action[agent_index][0] = 1.;
         }
         else
-            coll_action[agent_index].x = -1;
+            coll_action[agent_index][0] = -1;
     }
 
     if (std::abs(action->angular.z) < M_PI/2)
-        coll_action[agent_index].z = action->angular.z;
+        coll_action[agent_index][1] = action->angular.z;
     else
     {
         ROS_WARN_STREAM("Received angular velocity greater than "
@@ -164,9 +152,9 @@ void RosEnvironment::process_action(int agent_index, const geometry_msgs::TwistC
             << "), trimming");
         if (action->angular.z > 0)
         {
-            coll_action[agent_index].z = M_PI/2.;
+            coll_action[agent_index][1] = M_PI/2.;
         }
         else
-            coll_action[agent_index].z = -M_PI/2;
+            coll_action[agent_index][1] = -M_PI/2;
     }
 }

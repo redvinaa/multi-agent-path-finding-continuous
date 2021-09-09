@@ -3,12 +3,10 @@
 #ifndef MAPF_ENVIRONMENT_ENVIRONMENT_H
 #define MAPF_ENVIRONMENT_ENVIRONMENT_H
 
-// ros datatype headers
-#include "mapf_environment/types.h"
-
 // other headers
 #include <box2d/box2d.h>
 #include <vector>
+#include <tuple>
 #include <string>
 #include <random>
 #include <utility>
@@ -39,10 +37,10 @@ class Environment
 
         // other fields
         std::vector<cv::Scalar> agent_colors;
-        std::vector<float> agent_lin_vel, agent_ang_vel;
+        std::vector<std::vector<float>> current_actions;
         std::vector<bool> collisions;
-        std::vector<LaserScan> laser_scans;
-        EnvStep last_env_step;
+        std::vector<std::vector<float>> laser_scans;
+        std::vector<std::vector<float>> last_observation;
         bool draw_laser, draw_noisy_pose, done;
         float block_size, scale_factor, laser_max_angle, laser_max_dist,
             robot_diam, robot_radius, map_width, map_height,
@@ -85,50 +83,51 @@ class Environment
          */
         void add_agent();
 
-        /*! \brief Step physics, calculate observations (incl. scans, collisions)
+        /*! \brief Step physics, calculate observations (incl. scans, collisions) and rewards
          *
          * First, the stored collisions are cleared.
          *
          * Then, the internally stored linear and angular velocities are set.
-         * Then, the physics simulation step is calculated.
-         * Finally, the observations are updated (step_multiply times):
+         * Then, the physics simulation step is calculated (step_multiply times).
+         * Finally, the observations are updated:
          *   - laser_scans
          *   - collisions,
          * along with the other parts of the observations.
          *
-         * Important: done is not set here, but in step(), which calls this function.
+         * Done is not set here, but in step(), which calls this function.
          *
          * After that, the environment checks if any of the agents reached their
          * goals. If yes, then for the given agents a new goal is generated.
-         * \return Observations for the agents
+         * \return Tuple of the observations for the agents and rewards
          * \exception std::runtime_error Raised if done == true
          * \sa get_observation(), step()
          */
-        EnvStep step_physics();
+        std::tuple<std::vector<std::vector<float>>, std::vector<float>> step_physics();
 
         /*! \brief Save the linear and angular velocity of the
          * given agent
          *
+         * Action is a vector of dimension 2 (linear, angular vel).
+         *
          * However, the velocities are set only in the step_physics()
          * \sa step_physics()
          */
-        void process_action(int agent_index, Action action);
+        void process_action(int agent_index, std::vector<float> action);
 
         /*! \brief Calculate the observations for the given agent
          *
-         * The observations are the following:
-         *   - sensor_msgs/LaserScan scan
-         *   - geometry_msgs/Point agent_pose  # linear x, y, and angle z
-         *   - geometry_msgs/Point agent_twist # linear x, and angle z
-         *   - geometry_msgs/Point goal_pose # x, y only
-         *   - float32 reward
+         * The observations contained in the vector are the following, respectively:
+         *   - agent_pose:  linear x, y, and angle z
+         *   - agent_twist: linear x, and angular z
+         *   - goal_pose:   linear x, y only
+         *   - scan:        vector of ranges
          *
          * Rewards are calculated based on the reached_goal argument.
          *
          * \sa step_physics()
-         * \return The calculated observation
+         * \return Tuple of the calculated observation vector and the reward
          */
-        Observation get_observation(int agent_index, bool reached_goal);
+        std::tuple<std::vector<float>, float> get_observation(int agent_index, bool reached_goal);
 
         FRIEND_TEST(EnvironmentCore, constructorRuns);
         FRIEND_TEST(EnvironmentFixture, testConstructor);
@@ -190,7 +189,7 @@ class Environment
         /*! \brief Set done=false, generate new starting positions and goals for all agents
          * \return First observation
          */
-        EnvStep reset();
+        std::vector<std::vector<float>> reset();
 
         /*! \brief Draw the obstacles, agents, goals, optionally
          * the raycasts, and show collisions as well
@@ -206,13 +205,16 @@ class Environment
          */
         void render(int wait = 0);
 
-        /* \brief Add actions, get observations, rewards and done
+        /* \brief Add actions, get observations, rewards and dones
          *
          * Done is set here, if max_steps is reached.
-         *
          * Based loosely on OpenAI Gym API
+         *
+         * \param actions vector of actions for every agens (size = no_agents * 2)
+         * \return Tuple of vectors: (obs, reward, done)
          */
-        EnvStep step(CollectiveAction actions);
+        std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool>>
+            step(std::vector<std::vector<float>> actions);
 
         /*! \brief Is the episode over
          */
@@ -237,30 +239,6 @@ class Environment
         /*! \brief Calculate how many relevant elements an observation has
          */
         int get_observation_size() const;
-
-        /*! \brief Take the Observation structure and
-         * put the relevant data in a float vector (STRIPS REWARD)
-         *
-         * The reward is not serialized, because the reward is not going
-         * to be fed to an ANN, which is the purpose of this function.
-         *
-         * \return Serialized (vectorized) observation
-         *
-         * \sa deserialize_observation()
-         */
-        static std::vector<float> serialize_observation(Observation obs);
-
-        /*! \brief Take the observation data as a float vector
-         * and construct an Observation object out of it (REWARD IS EMPTY)
-         *
-         * Because the serialized observation does not contain the reward,
-         * that of the deserialized one is set to zero.
-         *
-         * \return Deserialized (Observation type) observation
-         *
-         * \sa serialize_observation()
-         */
-        static Observation deserialize_observation(std::vector<float> obs);
 };
 
 #endif  // MAPF_ENVIRONMENT_ENVIRONMENT_H
