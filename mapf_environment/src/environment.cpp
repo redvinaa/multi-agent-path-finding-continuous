@@ -518,7 +518,10 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool
 {
     assert(actions.size() == number_of_agents);
     for (auto act : actions)
+    {
         assert(act.size() == 2);
+        assert(act[0] >= 0.);
+    }
 
     // process actions
     for (int i=0; i < number_of_agents; i++)

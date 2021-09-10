@@ -127,7 +127,10 @@ void RosEnvironment::step(const ros::TimerEvent&)
 void RosEnvironment::process_action(int agent_index, const geometry_msgs::TwistConstPtr& action)
 {
     if (std::abs(action->linear.x) < 1.)
-        coll_action[agent_index][0] = action->linear.x;
+        if (action->linear.x > 0.)
+            coll_action[agent_index][0] = action->linear.x;
+        else
+            ROS_WARN_STREAM("Received illegal linear velocity (below 0)");
     else
     {
         ROS_WARN_STREAM("Received linear velocity greater than 1 m/s ("
