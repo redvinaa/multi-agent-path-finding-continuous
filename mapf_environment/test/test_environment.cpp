@@ -228,6 +228,15 @@ TEST_F(EnvironmentFixture, testRender)
     }
 }
 
+TEST_F(EnvironmentFixture, testOsSpace)
+{
+    auto shape = environment->get_observation_space();
+    auto obs = environment->reset();
+
+    EXPECT_EQ(shape.size(), obs.size());
+    EXPECT_EQ(shape[0], obs[0].size());
+}
+
 
 int main(int argc, char **argv)
 {

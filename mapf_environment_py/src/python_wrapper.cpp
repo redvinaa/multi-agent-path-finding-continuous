@@ -46,6 +46,8 @@ PYBIND11_MODULE(mapf_env, m)
         "Get number of agents")
     .def("get_episode_sim_time", &Environment::get_episode_sim_time,
         "How much time has passed in the simulation since the start of the episode")
-    .def("get_observation_size", &Environment::get_observation_size,
-        "Calculate how many relevant elements an observation has");
+    .def("get_observation_space", &Environment::get_observation_space,
+        "Return shape of observation space (nagents x obs_len)")
+    .def("get_action_space", &Environment::get_action_space,
+        "Return shape of action space (nagents x act_len)");
 }

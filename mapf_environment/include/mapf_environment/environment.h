@@ -236,9 +236,13 @@ class Environment
          */
         float get_episode_sim_time() const;
 
-        /*! \brief Calculate how many relevant elements an observation has
+        /*! \brief Return shape of observation space (nagents x obs_len)
          */
-        int get_observation_size() const;
+        std::vector<int> get_observation_space() const;
+
+        /*! \brief Return shape of action space (nagents x act_len)
+         */
+        std::vector<int> get_action_space() const;
 };
 
 #endif  // MAPF_ENVIRONMENT_ENVIRONMENT_H

@@ -238,7 +238,7 @@ std::vector<std::vector<float>> Environment::reset()
     std::vector<std::vector<float>> out(number_of_agents);
     for (int i=0; i < number_of_agents; i++)
     {
-        out[i].resize(get_observation_size());
+        out[i].resize(get_observation_space()[0]);
         out[i] = std::get<0>(obs_and_rewards)[i];
     }
 
@@ -577,9 +577,9 @@ std::tuple<std::vector<float>, float> Environment::get_observation(int agent_ind
 
     // twist
     b2Vec2 vel = agent->GetLinearVelocity();
+    float lin_vel = std::sqrt(std::pow(vel.x, 2) + std::pow(vel.y, 2));
     float ang_vel = agent->GetAngularVelocity();
-    std::get<0>(obs_and_reward).push_back(vel.x);
-    std::get<0>(obs_and_reward).push_back(vel.y);
+    std::get<0>(obs_and_reward).push_back(lin_vel);
     std::get<0>(obs_and_reward).push_back(ang_vel);
 
     // goal pose
@@ -622,7 +622,18 @@ float Environment::get_episode_sim_time() const
     return episode_sim_time;
 }
 
-int Environment::get_observation_size() const
+std::vector<int> Environment::get_observation_space() const
 {
-    return 7 + laser_nrays;
+    int single_obs_len = 7 + laser_nrays;
+    std::vector<int> ret(number_of_agents);
+    std::fill(ret.begin(), ret.end(), single_obs_len);
+    return ret;
+}
+
+std::vector<int> Environment::get_action_space() const
+{
+    int single_act_len = 2;
+    std::vector<int> ret(number_of_agents);
+    std::fill(ret.begin(), ret.end(), single_act_len);
+    return ret;
 }
