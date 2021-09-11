@@ -33,7 +33,6 @@ Environment::Environment(std::string _map_path,
     bool         _draw_noisy_pose /* false */,
     float        _goal_reaching_reward /* 1. */,
     float        _collision_reward /* -0.5 */,
-    float        _step_reward /* -1. */,
     float        _noise /* 0.01 */,
     unsigned int _seed /* 0 */):
         gravity(0, 0),
@@ -58,7 +57,6 @@ Environment::Environment(std::string _map_path,
     draw_noisy_pose      = _draw_noisy_pose;
     goal_reaching_reward = _goal_reaching_reward;
     collision_reward     = _collision_reward;
-    step_reward          = _step_reward;
     noise                = _noise;
     seed                 = _seed;
 
@@ -594,17 +592,11 @@ std::tuple<std::vector<float>, float> Environment::get_observation(int agent_ind
         laser_scans[agent_index].begin(), laser_scans[agent_index].end());
 
     // reward and done
-    float reward;
+    float reward = 0.;
     if (reached_goal)
-    {
         reward = goal_reaching_reward;
-    }
-    else
-    {
-        reward = step_reward;
-        if (collisions[agent_index])
-            reward += collision_reward;
-    }
+    else if (collisions[agent_index])
+        reward = collision_reward;
     std::get<1>(obs_and_reward) = reward;
 
     return obs_and_reward;

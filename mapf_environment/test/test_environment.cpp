@@ -162,7 +162,6 @@ TEST_F(EnvironmentFixture, testMovement)
 
 TEST_F(EnvironmentFixture, testObservation)
 {
-    EXPECT_TRUE(std::abs(environment->step_reward - (-0.1)) < 0.01);
     EXPECT_EQ(environment->collision_reward, -0.5);
     EXPECT_EQ(environment->goal_reaching_reward, 1.);
     EXPECT_EQ(environment->max_steps, 60);
@@ -184,7 +183,6 @@ TEST_F(EnvironmentFixture, testObservation)
     // EXPECT_EQ(env_obs.observations[0].agent_twist.x, 1);
     // EXPECT_EQ(env_obs.observations[0].agent_twist.y, 0);
     // EXPECT_EQ(env_obs.observations[0].agent_twist.z, -0.5);
-    EXPECT_EQ(std::get<1>(env_step)[0], environment->step_reward);
     EXPECT_EQ(std::get<2>(env_step)[0], false);
 
     // test collision reward
@@ -195,7 +193,7 @@ TEST_F(EnvironmentFixture, testObservation)
     auto obs_and_rewards = environment->step_physics();
     EXPECT_TRUE(environment->collisions[0]);
 
-    EXPECT_TRUE(std::abs(std::get<1>(obs_and_rewards)[0] - (-0.6)) < 1e-3);
+    EXPECT_EQ(std::get<1>(obs_and_rewards)[0], environment->collision_reward);
 
     // test goal reaching reward
     environment->agent_bodies[0]->SetTransform(environment->goal_positions[0], 0);

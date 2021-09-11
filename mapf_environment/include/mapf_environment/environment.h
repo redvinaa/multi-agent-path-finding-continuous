@@ -44,7 +44,7 @@ class Environment
         bool draw_laser, draw_noisy_pose, done;
         float block_size, scale_factor, laser_max_angle, laser_max_dist,
             robot_diam, robot_radius, map_width, map_height,
-            goal_reaching_reward, collision_reward, step_reward,
+            goal_reaching_reward, collision_reward,
             episode_sim_time, noise;
         std::string map_path;
         int render_height, laser_nrays, step_multiply,
@@ -161,7 +161,6 @@ class Environment
          * \param _draw_noisy_pose Wether to show on rendering the agents' position with noise
          * \param _goal_reaching_reward Reward for reaching the goal (only if all the other agents reach their goal too)
          * \param _collision_reward Added reward in the case of a collision
-         * \param _step_reward Reward added in every step, except when the goal is reached
          * \param _noise Zero mean Gaussian noise applied to agent_pose and scan in the Observations
          * \param _seed Seed to generate random numbers
          * \sa init_map(), init_physics()
@@ -182,7 +181,6 @@ class Environment
             bool         _draw_noisy_pose      = false,
             float        _goal_reaching_reward = 1.,
             float        _collision_reward     = -0.5,
-            float        _step_reward          = -0.1,
             float        _noise                = 0.01,
             unsigned int _seed                 = 0);
 
