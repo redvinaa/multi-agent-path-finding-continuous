@@ -1,3 +1,0 @@
-[submodule "MAAC"]
-	path = multi_agent_sac
-	url = https://github.com/redvinaa/MAAC
