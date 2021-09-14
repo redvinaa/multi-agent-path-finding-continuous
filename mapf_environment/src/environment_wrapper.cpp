@@ -37,7 +37,7 @@ RosEnvironment::RosEnvironment(ros::NodeHandle _nh):
     // read parameters
     nh.param<std::string>("map_path",     map_path,          default_map_path);
     nh.param<int>("number_of_agents",     number_of_agents,  2);
-    nh.param<double>("physics_step_size", physics_step_size, 0.2);
+    nh.param<double>("physics_step_size", physics_step_size, 0.1);
     nh.param<double>("laser_max_angle",   laser_max_angle,   45*M_PI/180);
     nh.param<double>("laser_max_dist",    laser_max_dist,    10);
     nh.param<double>("robot_diam",        robot_diam,        0.8);
@@ -97,7 +97,6 @@ void RosEnvironment::step(const ros::TimerEvent&)
     std::cout << "Sim time: " << env->get_episode_sim_time() << std::endl;
 
     auto env_step = env->step(coll_action);
-    std::cout << "I'm alive!" << std::endl;
     auto rewards  = std::get<1>(env_step);
     std::string info;
     info += "Rewards: ";
@@ -126,8 +125,10 @@ void RosEnvironment::step(const ros::TimerEvent&)
 
 void RosEnvironment::process_action(int agent_index, const geometry_msgs::TwistConstPtr& action)
 {
-    if (std::abs(action->linear.x) < 1.)
-        if (action->linear.x > 0.)
+    float eps = 1e-5;
+
+    if (std::abs(action->linear.x) < (1. + eps))
+        if (action->linear.x > (0. - eps))
             coll_action[agent_index][0] = action->linear.x;
         else
             ROS_WARN_STREAM("Received illegal linear velocity (below 0)");
@@ -136,7 +137,7 @@ void RosEnvironment::process_action(int agent_index, const geometry_msgs::TwistC
         ROS_WARN_STREAM("Received linear velocity greater than 1 m/s ("
             << action->linear.x
             << "), trimming");
-        if (action->linear.x > 0)
+        if (action->linear.x > (0. - eps))
         {
             coll_action[agent_index][0] = 1.;
         }
@@ -144,7 +145,7 @@ void RosEnvironment::process_action(int agent_index, const geometry_msgs::TwistC
             coll_action[agent_index][0] = -1;
     }
 
-    if (std::abs(action->angular.z) < M_PI/2)
+    if (std::abs(action->angular.z) < (M_PI/2 + eps))
         coll_action[agent_index][1] = action->angular.z;
     else
     {
@@ -153,7 +154,7 @@ void RosEnvironment::process_action(int agent_index, const geometry_msgs::TwistC
             << " rad/s ("
             << action->angular.z
             << "), trimming");
-        if (action->angular.z > 0)
+        if (action->angular.z > (0. - eps))
         {
             coll_action[agent_index][1] = M_PI/2.;
         }
