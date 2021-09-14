@@ -4,8 +4,8 @@
   <version>0.0.0</version>
   <description>The mapf_environment_py package</description>
 
-  <maintainer email="vince@todo.todo">vince</maintainer>
-  <license>TODO</license>
+  <maintainer email="redvinaa@gmail.com">vince</maintainer>
+  <license>MIT</license>
 
   <doc_depend>doxygen</doc_depend>
   <buildtool_depend>catkin</buildtool_depend>
