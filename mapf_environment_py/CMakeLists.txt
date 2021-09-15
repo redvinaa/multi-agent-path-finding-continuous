@@ -27,6 +27,5 @@ install(TARGETS mapf_env
 )
 
 # test runs, but catkin uses python2.7 so this does not work
-# catkin_add_nosetests(test/test_python_wrapper.py)
 roslint_python()
 roslint_add_test()
