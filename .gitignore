@@ -135,3 +135,5 @@ devel
 doc/*
 libtorch/
 *settings.ini
+
+multi_agent_sac/runs
