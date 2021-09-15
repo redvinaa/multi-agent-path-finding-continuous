@@ -16,5 +16,5 @@ catkin_package(
 )
 
 # linting
-roslint_python()
-roslint_add_test()
+# roslint_python()
+# roslint_add_test()
