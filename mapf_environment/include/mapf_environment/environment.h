@@ -10,6 +10,7 @@
 #include <string>
 #include <random>
 #include <utility>
+#include <memory>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <gtest/gtest.h>
@@ -53,8 +54,9 @@ class Environment
         cv::Mat map_image_raw, map_image, rendered_image;
         cv::Scalar color;
 
-        std::default_random_engine generator;
-        std::normal_distribution<float> dist;
+        std::shared_ptr<std::default_random_engine> generator;
+        std::normal_distribution<float> normal_dist;
+        std::uniform_real_distribution<float> uniform_dist;
 
         /*! \brief Load map
          *

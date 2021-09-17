@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cmath>
 #include <random>
+#include <memory>
 
 
 Environment::Environment(std::string _map_path,
@@ -37,9 +38,8 @@ Environment::Environment(std::string _map_path,
     unsigned int _seed /* 0 */):
         gravity(0, 0),
         world(gravity),
-        done(true),
-        number_of_agents(0),
-        dist(0., _noise)
+        normal_dist(0., _noise),
+        uniform_dist(0., 1.)
 {
     map_path             = _map_path;
     number_of_agents     = _number_of_agents;
@@ -60,12 +60,15 @@ Environment::Environment(std::string _map_path,
     noise                = _noise;
     seed                 = _seed;
 
-    std::srand(seed);
+    generator = std::make_shared<std::default_random_engine>(_seed);
+
     assert(robot_diam < 1.);
     assert(number_of_agents > 0);
     assert(laser_nrays > 0);
 
+    done = true;
     robot_radius = robot_diam/2;
+
     init_map();  // load map before physics
     init_physics();
 
@@ -157,7 +160,7 @@ std::pair<float, float> Environment::generate_empty_position() const
         map_indices[i] = i;
     }
 
-    std::random_shuffle(map_indices.begin(), map_indices.end());
+    std::shuffle(map_indices.begin(), map_indices.end(), *generator);
 
     for (auto it = map_indices.begin(); it != map_indices.end(); it++)
     {
@@ -217,7 +220,7 @@ std::vector<std::vector<float>> Environment::reset()
     {
         float x_pos, y_pos;
         std::tie(x_pos, y_pos) = generate_empty_position();
-        float angle = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * M_PI * 2;
+        float angle = uniform_dist(*generator) * M_PI * 2;
         agent_bodies[i]->SetTransform(b2Vec2(x_pos, y_pos), angle);
 
         std::tie(x_pos, y_pos) = generate_empty_position();
@@ -253,7 +256,7 @@ void Environment::add_agent()
     float x_pos, y_pos;
     std::tie(x_pos, y_pos) = generate_empty_position();
     bodyDef.position.Set(x_pos, y_pos);
-    bodyDef.angle = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * M_PI * 2;
+    bodyDef.angle = uniform_dist(*generator) * M_PI * 2;
     b2Body* body = world.CreateBody(&bodyDef);
 
     b2CircleShape circleShape;
@@ -274,9 +277,9 @@ void Environment::add_agent()
     goal_positions.push_back(b2Vec2(x_pos, y_pos));
 
     // generate random color for agent
-    int b = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * 255;
-    int r = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * 255;
-    int g = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * 255;
+    int b = uniform_dist(*generator) * 255;
+    int r = uniform_dist(*generator) * 255;
+    int g = uniform_dist(*generator) * 255;
     cv::Scalar agent_color(b, r, g);
     agent_colors.push_back(agent_color);
 
@@ -381,7 +384,7 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::ste
             if (callback.hit)
                 range = (pt_from - callback.point).Length();
 
-            laser_scans[i][j] = range + dist(generator);
+            laser_scans[i][j] = range + normal_dist(*generator);
         }
     }
 
@@ -572,16 +575,16 @@ std::tuple<std::vector<float>, float> Environment::get_observation(int agent_ind
     yaw = std::max(yaw, static_cast<float>(0.));  // normalize angle between 0 and pi
     yaw = std::min(yaw, static_cast<float>(M_PI));
 
-    std::get<0>(obs_and_reward).push_back(position.x + dist(generator));
-    std::get<0>(obs_and_reward).push_back(position.y + dist(generator));
-    std::get<0>(obs_and_reward).push_back(yaw        + dist(generator));
+    std::get<0>(obs_and_reward).push_back(position.x + normal_dist(*generator));
+    std::get<0>(obs_and_reward).push_back(position.y + normal_dist(*generator));
+    std::get<0>(obs_and_reward).push_back(yaw        + normal_dist(*generator));
 
     // twist
     b2Vec2 vel = agent->GetLinearVelocity();
     float lin_vel = std::sqrt(std::pow(vel.x, 2) + std::pow(vel.y, 2));
     float ang_vel = agent->GetAngularVelocity();
-    std::get<0>(obs_and_reward).push_back(lin_vel);
-    std::get<0>(obs_and_reward).push_back(ang_vel);
+    std::get<0>(obs_and_reward).push_back(lin_vel + normal_dist(*generator));
+    std::get<0>(obs_and_reward).push_back(ang_vel + normal_dist(*generator));
 
     // goal pose
     std::get<0>(obs_and_reward).push_back(goal_positions[agent_index].x);
