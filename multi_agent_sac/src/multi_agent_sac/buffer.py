@@ -15,6 +15,17 @@ class ReplayBuffer:
 
     ## Push transition into buffer
     def push(self, obs, act, rew, next_obs, d):
+        if type(obs) == list:
+            obs = np.array(obs)
+        if type(act) == list:
+            act = np.array(act)
+        if type(rew) == list:
+            rew = np.array(rew)
+        if type(next_obs) == list:
+            next_obs = np.array(next_obs)
+        if type(d) == list:
+            d = np.array(d)
+
         assert(obs.shape      == (self.n_agents, self.obs_size,))
         assert(act.shape      == (self.n_agents, self.act_size,))
         assert(rew.shape      == (self.n_agents,))
@@ -47,5 +58,5 @@ class ReplayBuffer:
         indices = np.random.choice(len(self.buf), n, replace=False)
         obs, act, rew, next_obs, d = zip(*[self.buf[idx] for idx in indices])
 
-        arr = np.array
-        return (arr(obs), arr(act), arr(rew, dtype=np.float32), arr(next_obs), arr(d, dtype=np.bool),)
+        a = np.array
+        return a(obs), a(act), a(rew, dtype=np.float32), a(next_obs), a(d, dtype=np.bool)
