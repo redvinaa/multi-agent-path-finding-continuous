@@ -10,6 +10,8 @@ from mapf_env import Environment
 from multi_agent_sac.env_wrapper import UnitActionsEnv
 from multi_agent_sac.algorithm import MASAC
 from multi_agent_sac.buffer import ReplayBuffer
+from multi_agent_sac.network import Network
+import torch
 import rosunit
 import numpy as np
 
@@ -83,8 +85,32 @@ class TestMASAC(unittest.TestCase):
 
 
     def test_network(self):
-        pass
+        net = Network(2, 1)
 
+        dummy_in  = np.random.random(10).reshape((-1, 2)).astype(np.float32)
+        dummy_out = np.ones((5, 1)).astype(np.float32)
+
+        dummy_in = torch.tensor(dummy_in)
+        dummy_out = torch.tensor(dummy_out)
+
+        opt = torch.optim.Adam(net.parameters())
+        L   = torch.nn.MSELoss()
+        losses = []
+        for ep in range(10):
+            opt.zero_grad()
+
+            net_out = net(dummy_in)
+
+            loss = L(net_out, dummy_out)
+            loss_val = loss.item()
+            losses.append(loss_val)
+            self.assertNotEqual(loss_val, 0)
+
+            loss.backward()
+            opt.step()
+
+        print(losses)
+        self.assertGreater(losses[0], losses[-1])
 
 
 if __name__ == '__main__':
