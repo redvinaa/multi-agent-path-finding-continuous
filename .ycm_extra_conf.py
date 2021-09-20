@@ -30,4 +30,4 @@ def Settings(**kwargs):
             if subpath.split('/')[-1] == 'include':
                 flags.append('-I' + subpath)
 
-    return {'flags': flags}
+    return {'flags': flags, 'interpreter_path': '/usr/bin/python3.6'}
