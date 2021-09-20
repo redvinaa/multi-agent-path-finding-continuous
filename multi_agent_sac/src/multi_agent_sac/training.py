@@ -11,7 +11,8 @@ from env_wrapper import UnitActionsEnv
 from rospkg import RosPack
 
 
-def run(config):
+## Perform training with the provided config
+def run(config: object) -> type(None):
     pkg_path = RosPack().get_path('multi_agent_sac')
     model_dir = os.path.join(pkg_path, 'runs', config.run_name, 'models')
     os.makedirs(model_dir, exist_ok=True)
@@ -45,17 +46,17 @@ def run(config):
     for ep_i in range(config.n_episodes):
 
         obs = env.reset()
-        obs_t = torch.Tensor(obs)
+        obs = np.array(obs)
 
         if ((ep_i+1) % 10) == 0:
             print(f'Episode {ep_i+1} of {config._n_episodes}')
 
         for et_i in range(config.episode_length):
-            act_t = model.step(obs_t, explore=True)
-            act = act_t.data.numpy()
+            act = model.step(obs_t, explore=True)
 
             next_obs, rewards, dones = env.step(act)
-            buffer.push(obs, act, rewards, dones)
+            next_obs = np.array(next_obs)
+            buffer.push(obs, act, rewards, next_obs, dones)
             obs = next_obs
             t += 1
 
@@ -63,7 +64,7 @@ def run(config):
                 (t % config.steps_per_update) == 0):
 
                 sample = buffer.sample(config.batch_size)
-                model.update(sample, logger=logger)
+                model.update(sample, step=t)
 
         ep_rews = replay_buffer.get_rewards(config.episode_length)
         for a_i, a_ep_rew in enumerate(ep_rews):

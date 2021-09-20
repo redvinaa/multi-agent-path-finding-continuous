@@ -5,7 +5,7 @@ from collections import deque
 
 ## Replay buffer to store transitions for multi-agent RL
 class ReplayBuffer:
-    def __init__(self, length, n_agents, obs_size, act_size):
+    def __init__(self, length: int, n_agents: int, obs_size: int, act_size: int):
         self.max_length = length
         self.n_agents   = n_agents
         self.obs_size   = obs_size
@@ -14,7 +14,12 @@ class ReplayBuffer:
         self.buf = deque(maxlen=self.max_length)
 
     ## Push transition into buffer
-    def push(self, obs, act, rew, next_obs, d):
+    def push(self,
+            obs: np.ndarray,
+            act: np.ndarray,
+            rew: np.ndarray,
+            next_obs: np.ndarray,
+            d: np.ndarray) -> type(None):
         if type(obs) == list:
             obs = np.array(obs)
         if type(act) == list:
@@ -35,13 +40,14 @@ class ReplayBuffer:
         self.buf.appendleft((obs, act, rew, next_obs, d,))
 
     ## Return number of elements
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.buf)
 
     ## Return the sum of rewards from the last n steps
+    #
     # @param n Length of the last episode to sum rewards for
     # @return List of rewards per agent
-    def get_rewards(self, n):
+    def get_rewards(self, n: int) -> list[float]:
         assert(n <= len(self.buf))
 
         vals = np.zeros((self.n_agents,))
@@ -52,9 +58,10 @@ class ReplayBuffer:
         return vals
 
     ## Sample n elements from buffer
+    #
     #  @param n Sample size
     #  @return Tuple of ndarrays: (obs, act, rew, next_obs, done)
-    def sample(self, n):
+    def sample(self, n: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         indices = np.random.choice(len(self.buf), n, replace=False)
         obs, act, rew, next_obs, d = zip(*[self.buf[idx] for idx in indices])
 
