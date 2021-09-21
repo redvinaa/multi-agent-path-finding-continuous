@@ -8,9 +8,8 @@ import unittest
 import rospkg
 from mapf_env import Environment
 from multi_agent_sac.env_wrapper import UnitActionsEnv
-from multi_agent_sac.algorithm import MASAC
 from multi_agent_sac.buffer import ReplayBuffer
-from multi_agent_sac.network import Network
+from multi_agent_sac.network import LinearNetwork
 import torch
 import rosunit
 import numpy as np
@@ -77,6 +76,7 @@ class TestMASAC(unittest.TestCase):
                 self.assertEqual(len(buf), 5)
 
         self.assertEqual(buf.get_rewards(10)[0], rew0)
+        self.assertTrue((buf.get_rewards(10) == buf.get_rewards()).all())
 
         sample = buf.sample(4)
         self.assertEqual(len(sample), 5)
@@ -85,7 +85,7 @@ class TestMASAC(unittest.TestCase):
 
 
     def test_network(self):
-        net = Network(2, 1)
+        net = LinearNetwork(2, 1, [3, 3])
 
         dummy_in  = np.random.random(10).reshape((-1, 2)).astype(np.float32)
         dummy_out = np.ones((5, 1)).astype(np.float32)
