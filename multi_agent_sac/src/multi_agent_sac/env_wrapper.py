@@ -1,5 +1,6 @@
 from mapf_env import Environment
 import numpy as np
+from typing import Union, List
 
 
 ## Maps actions from (-1, 1) to env defined range
@@ -10,7 +11,7 @@ class UnitActionsEnv(Environment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def step(self, actions):
+    def step(self, actions: Union[List[List[float]], np.ndarray]):
         # max linear speed is 1 m/s
         # max angular speed is pi/2 rad/s
         actions = np.array(actions)

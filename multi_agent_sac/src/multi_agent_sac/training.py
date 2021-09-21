@@ -18,6 +18,7 @@ def run(config: object) -> type(None):
     os.makedirs(model_dir, exist_ok=True)
 
     log_dir = os.path.join(pkg_path, 'runs', config.run_name, 'logs')
+    os.makedirs(log_dir, exist_ok=True)
     logger = SummaryWriter(log_dir)
 
     torch.manual_seed(config.seed)
@@ -31,10 +32,15 @@ def run(config: object) -> type(None):
 
     model = MASAC(
         n_agents          = config.n_agents,
+        obs_size          = env.get_observation_space()[0],
+        act_size          = env.get_action_space()[0],
         gamma             = config.gamma,
         tau               = config.tau,
-        actor_hidden_dim  = config.actor_hidden_dim,
-        critic_hidden_dim = config.critic_hidden_dim)
+        alpha             = config.alpha,
+        actor_hidden      = [config.actor_hidden_dim],
+        critic_hidden     = [config.critic_hidden_dim],
+        model_dir         = model_dir,
+        logger            = logger)
 
     buffer = ReplayBuffer(
         length=config.buffer_length,
@@ -49,10 +55,10 @@ def run(config: object) -> type(None):
         obs = np.array(obs)
 
         if ((ep_i+1) % 10) == 0:
-            print(f'Episode {ep_i+1} of {config._n_episodes}')
+            print(f'Episode {ep_i+1} of {config.n_episodes}')
 
         for et_i in range(config.episode_length):
-            act = model.step(obs_t, explore=True)
+            act = model.step(obs, explore=True)
 
             next_obs, rewards, dones = env.step(act)
             next_obs = np.array(next_obs)
@@ -66,19 +72,18 @@ def run(config: object) -> type(None):
                 sample = buffer.sample(config.batch_size)
                 model.update(sample, step=t)
 
-        ep_rews = replay_buffer.get_rewards(config.episode_length)
+        ep_rews = buffer.get_rewards(config.episode_length)
         for a_i, a_ep_rew in enumerate(ep_rews):
             logger.add_scalar('agent%i/episode_reward' % a_i,
                               a_ep_rew * config.episode_length, ep_i)
 
         if (ep_i % config.save_interval) == 0:
-            inc_model_dir = os.path.join(model_dir, 'incremental')
+            inc_model_dir = os.path.join(model_dir, 'incremental', f'model_ep{ep_i+1}')
             os.makedirs(inc_model_dir, exist_ok=True)
-            model.save(os.path.join(inc_model_dir, 'model_ep%i.pt' % (ep_i + 1)))
-            model.save(model_dir)
+            model.save()
             print('Saved model!')
 
-    model.save(model_dir)
+    model.save()
     print('Saved model!')
     logger.export_scalars_to_json(str(os.path.join(log_dir, 'summary.json')))
     logger.close()
@@ -100,8 +105,8 @@ if __name__ == '__main__':
     parser.add_argument('--actor_hidden_dim',  default=128,         type=int)
     parser.add_argument('--critic_hidden_dim', default=128,         type=int)
     parser.add_argument('--seed',              default=0,           type=int)
-    parser.add_argument('--tau',               default=0.001,       type=float)
-    parser.add_argument('--gamma',             default=0.99,        type=float)
+    parser.add_argument('--tau',               default=0.999,       type=float)
+    parser.add_argument('--gamma',             default=0.95,        type=float)
     parser.add_argument('--alpha',             default=0.99,        type=float)
 
     config = parser.parse_args()
