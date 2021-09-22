@@ -6,6 +6,7 @@ from typing import List, Tuple
 
 ## Generic ANN class
 class LinearNetwork(nn.Module):
+    ## @param hidden_layers List of number of nodes in the hidden layers
     def __init__(self,
             input_size: int,
             output_size: int,
@@ -46,7 +47,7 @@ class LinearNetwork(nn.Module):
 
 ## Class for double Q-learning
 #
-#  All observations and actions are passed to the ANN, and the network
+#  All observations and actions are flattened, and passed to the ANN, and the network
 #  estimates the value from the perspective of the firstly input agent
 #
 #  https://github.com/ku2482/soft-actor-critic.pytorch.git
@@ -63,33 +64,47 @@ class DoubleQNetwork(nn.Module):
         self.obs_size      = obs_size
         self.act_size      = act_size
         self.hidden_layers = hidden_layers
+        self.activation    = activation
 
-        input_size = n_agents * (obs_size + act_size)
+        self.input_size  = n_agents * (obs_size + act_size)
+        self.output_size = 1
+
         self.Q1 = LinearNetwork(
-            input_size, 1, hidden_layers, activation)
+            self.input_size, self.output_size, hidden_layers, activation)
         self.Q2 = LinearNetwork(
-            input_size, 1, hidden_layers, activation)
+            self.input_size, self.output_size, hidden_layers, activation)
 
     ## Returns the estimated value of the state-action for each agent
     def forward(self, obs: torch.Tensor, act: torch.Tensor) -> \
             Tuple[torch.Tensor, torch.Tensor]:
 
         assert(len(obs.shape) == 3) # shape=(N, n_agents, obs_size)
-        assert(obs.shape[1] ==self.n_agents)
-        assert(obs.shape[2] ==self.obs_size)
-        N = obs.shape[0]
+        assert(obs.shape[1] == self.n_agents)
+        assert(obs.shape[2] == self.obs_size)
+        N = obs.shape[0] # sample size
+
+        assert(len(act.shape) == 3) # shape=(N, n_agents, act_size)
+        assert(act.shape[1] == self.n_agents)
+        assert(act.shape[2] == self.act_size)
+        assert(N == act.shape[0])
 
         vals_q1 = torch.empty((N, self.n_agents))
         vals_q2 = torch.empty((N, self.n_agents))
 
         for i in range(self.n_agents):
-            obs_rolled = torch.roll(obs, shifts=-i, dims=1)
+            obs_rolled = torch.roll(obs, shifts=-i, dims=1) # roll agents dimension
             act_rolled = torch.roll(act, shifts=-i, dims=1)
-            obs_act = torch.cat((obs_rolled, act_rolled), dim=2)
-            obs_act = torch.reshape(obs_act, shape=(N, -1))
-            q1, q2 = self.Q1(obs_act), self.Q2(obs_act)
 
-            vals_q1[:, i] = q1.squeeze(-1)
+            obs_act = torch.cat((obs_rolled, act_rolled), dim=2)
+            # shape=(N, n_agents, obs_size+act_size)
+
+            obs_act = torch.reshape(obs_act, shape=(N, self.input_size))
+            # shape=(N, n_agents*(obs_size+act_size))
+
+            q1 = self.Q1(obs_act) # shape=(N, 1)
+            q2 = self.Q2(obs_act)
+
+            vals_q1[:, i] = q1.squeeze(-1) # shape=(N,)
             vals_q2[:, i] = q2.squeeze(-1)
 
         return vals_q1, vals_q2
@@ -116,24 +131,26 @@ class TanhGaussianPolicy(nn.Module):
         self.obs_size      = obs_size
         self.act_size      = act_size
         self.hidden_layers = hidden_layers
+        self.activation    = activation
 
+        # input: state, output: means in each dim, then stds in each dim
         self.policy = LinearNetwork(
             obs_size, act_size * 2, hidden_layers, activation)
 
-    ## Returns the means and log_stds at the given state, for one agent
+    ## Returns the means and log_stds at the given state, for one agent (Gaussian, no Tanh)
     def forward(self, obs: torch.Tensor) -> \
             Tuple[torch.Tensor, torch.Tensor]:
 
         assert(len(obs.shape) == 2)  # shape=(N, obs_size)
         assert(obs.shape[1] ==self.obs_size)
+        N = obs.shape[0] # sample size
 
-        mean, log_std = torch.chunk(self.policy(obs), 2, dim=-1)
-        log_std = torch.clamp(
-            log_std, min=self.LOG_STD_MIN, max=self.LOG_STD_MAX)
+        mean, log_std = torch.chunk(self.policy(obs), 2, dim=-1) # divide last dimension
+        log_std = torch.clamp(log_std, min=self.LOG_STD_MIN, max=self.LOG_STD_MAX)
 
         return mean, log_std
 
-    ## Calculate Tanh of Gaussian distribusion of mean and std
+    ## Calculate Tanh of Gaussian distribusion of mean and std at given state
     #
     #  @return (actions (explore), entropies, actions (no explore),)
     def sample(self, obs: torch.Tensor) -> \
@@ -142,7 +159,7 @@ class TanhGaussianPolicy(nn.Module):
         assert(len(obs.shape) == 3)  # shape=(N, n_agents, obs_size)
         assert(obs.shape[1] ==self.n_agents)
         assert(obs.shape[2] ==self.obs_size)
-        N = obs.shape[0]
+        N = obs.shape[0] # sample size
 
         means = torch.empty((N, self.n_agents, self.act_size))
         stds  = torch.empty((N, self.n_agents, self.act_size))
@@ -154,13 +171,13 @@ class TanhGaussianPolicy(nn.Module):
             means[:, i] = mean
             stds[:, i]  = std
 
-        dist = torch.distributions.normal.Normal(means, stds)
-        act_sampled = dist.rsample()
-        act_sampled = torch.tanh(act_sampled)
+        dist             = torch.distributions.normal.Normal(means, stds)
+        act_sampled      = dist.rsample()          # shape=(N, n_agents, act_size)
+        act_sampled_tanh = torch.tanh(act_sampled) # shape=(N, n_agents, act_size)
 
         # entropies
         log_probs = dist.log_prob(act_sampled) \
-            - torch.log(1 - act_sampled.square() + self.EPS)
-        entropies = -log_probs.sum(dim=1, keepdim=True)
+            - torch.log(1 - act_sampled_tanh.square() + self.EPS)
+        entropies = -log_probs.sum(dim=-1, keepdim=True) # sum in actions dim
 
         return act_sampled, entropies, torch.tanh(means)
