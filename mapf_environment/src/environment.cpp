@@ -313,7 +313,7 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::ste
     for (int j=0; j < step_multiply; j++)
     {
         // set agent speeds
-        for (int i=0; i < agent_bodies.size(); i++)
+        for (int i=0; i < number_of_agents; i++)
         {
             b2Body* agent = agent_bodies[i];
             float angle = agent->GetAngle();
@@ -327,7 +327,7 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::ste
         episode_sim_time += physics_step_size;
 
         // get collisions
-        for (int i=0; i < agent_bodies.size(); i++)
+        for (int i=0; i < number_of_agents; i++)
         {
             b2Body* agent = agent_bodies[i];
 
@@ -344,7 +344,7 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::ste
         }
 
         // check if any of the agents reached their goal
-        for (int i=0; i < agent_bodies.size(); i++)
+        for (int i=0; i < number_of_agents; i++)
         {
             b2Body* agent = agent_bodies[i];
             bool done = ((agent->GetPosition() - goal_positions[i]).Length() < robot_diam);
@@ -361,7 +361,7 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::ste
     }
 
     // calculate laser scans
-    for (int i=0; i < agent_bodies.size(); i++)
+    for (int i=0; i < number_of_agents; i++)
     {
         b2Body* agent = agent_bodies[i];
         float angle = agent->GetAngle();
@@ -371,18 +371,40 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::ste
 
         pt_from.x = robot_radius * std::cos(angle) + position.x;
         pt_from.y = robot_radius * std::sin(angle) + position.y;
+
+        // check if any of the other agents are too close,
+        // otherwise RayCast does not work
+        bool agent_close = false;
+        for (int h=0; h < number_of_agents; h++)
+        {
+            if (h == i)  // same agent
+                continue;
+
+            if ((pt_from - agent_bodies[h]->GetPosition()).Length() < robot_radius)
+            {
+                agent_close = true;
+                break;
+            }
+        }
+
         for (int j=0; j < laser_nrays; j++)
         {
-            float laser_angle = angle - laser_max_angle + j * laser_max_angle * 2 / laser_nrays;
-            pt_to.x = laser_max_dist * std::cos(laser_angle) + pt_from.x;
-            pt_to.y = laser_max_dist * std::sin(laser_angle) + pt_from.y;
-
-            RayCastClosestCallback callback;
-            world.RayCast(&callback, pt_from, pt_to);
-
             float range = laser_max_dist;
-            if (callback.hit)
-                range = (pt_from - callback.point).Length();
+
+            if (agent_close)
+                range = 0;
+            else
+            {
+                float laser_angle = angle - laser_max_angle + j * laser_max_angle * 2 / laser_nrays;
+                pt_to.x = laser_max_dist * std::cos(laser_angle) + pt_from.x;
+                pt_to.y = laser_max_dist * std::sin(laser_angle) + pt_from.y;
+
+                RayCastClosestCallback callback;
+                world.RayCast(&callback, pt_from, pt_to);
+
+                if (callback.hit)
+                    range = (pt_from - callback.point).Length();
+            }
 
             laser_scans[i][j] = range + normal_dist(*generator);
         }
@@ -417,7 +439,7 @@ cv::Mat Environment::get_rendered_pic()
     }
 
     // draw goals
-    for (int i=0; i < goal_positions.size(); i++)
+    for (int i=0; i < number_of_agents; i++)
     {
         b2Vec2 position = goal_positions[i];
 
@@ -432,9 +454,10 @@ cv::Mat Environment::get_rendered_pic()
     auto font = cv::FONT_HERSHEY_TRIPLEX;
     int thickness = 3;
     int base_line = 0;
-    // auto scale = cv::getFontScaleFromHeight(font, inner_radius*scale_factor, thickness);  // TODO
+    // TODO(redvinaa): Update opencv
+    // auto scale = cv::getFontScaleFromHeight(font, inner_radius*scale_factor, thickness);
     int scale = 3;
-    for (int i=0; i < agent_bodies.size(); i++)
+    for (int i=0; i < number_of_agents; i++)
     {
         b2Vec2 position = agent_bodies[i]->GetPosition();
         float angle = agent_bodies[i]->GetAngle();

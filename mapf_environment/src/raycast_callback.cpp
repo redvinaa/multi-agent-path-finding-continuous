@@ -10,8 +10,6 @@ RayCastClosestCallback::RayCastClosestCallback()
 float RayCastClosestCallback::ReportFixture(b2Fixture* fixture,
     const b2Vec2& point, const b2Vec2& normal, float fraction)
 {
-    b2Body* body = fixture->GetBody();
-
     hit = true;
     this->point = point;
     this->normal = normal;

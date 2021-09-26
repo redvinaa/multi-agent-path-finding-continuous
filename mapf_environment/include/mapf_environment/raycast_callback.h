@@ -5,7 +5,7 @@
 
 #include <box2d/box2d.h>
 
-/*! \brief Raycast callback class for box2d 
+/*! \brief Raycast callback class for box2d
  *
  * Based on: https://www.iforce2d.net/b2dtut/world-querying
  */
