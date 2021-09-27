@@ -9,8 +9,13 @@ def soft_update(target, source, tau):
 
 
 ## Disable gradients
-#
-#  https://github.com/ku2482/soft-actor-critic.pytorch.git
 def grad_false(network):
     for param in network.parameters():
         param.requires_grad = False
+
+
+## Perform gradient descent
+def update_params(optim, loss):
+    optim.zero_grad()
+    loss.backward()
+    optim.step()

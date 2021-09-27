@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, TextIO
 
 
 ## Generic ANN class
@@ -42,6 +42,7 @@ class LinearNetwork(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert(len(x.shape) == 2)
+        assert(x.shape[1]   == self.input_size)
         return self.layers(x)
 
 
@@ -49,8 +50,6 @@ class LinearNetwork(nn.Module):
 #
 #  All observations and actions are flattened, and passed to the ANN, and the network
 #  estimates the value from the perspective of the firstly input agent
-#
-#  https://github.com/ku2482/soft-actor-critic.pytorch.git
 class DoubleQNetwork(nn.Module):
     def __init__(self,
             n_agents: int,
@@ -79,13 +78,13 @@ class DoubleQNetwork(nn.Module):
             Tuple[torch.Tensor, torch.Tensor]:
 
         assert(len(obs.shape) == 3) # shape=(N, n_agents, obs_size)
-        assert(obs.shape[1] == self.n_agents)
-        assert(obs.shape[2] == self.obs_size)
+        assert(obs.shape[1]   == self.n_agents)
+        assert(obs.shape[2]   == self.obs_size)
         N = obs.shape[0] # sample size
 
         assert(len(act.shape) == 3) # shape=(N, n_agents, act_size)
-        assert(act.shape[1] == self.n_agents)
-        assert(act.shape[2] == self.act_size)
+        assert(act.shape[1]   == self.n_agents)
+        assert(act.shape[2]   == self.act_size)
         assert(N == act.shape[0])
 
         vals_q1 = torch.empty((N, self.n_agents))
@@ -101,6 +100,13 @@ class DoubleQNetwork(nn.Module):
             obs_act = torch.reshape(obs_act, shape=(N, self.input_size))
             # shape=(N, n_agents*(obs_size+act_size))
 
+            ## cat-ed obs and act of the i-th agent (first sample) << this works
+            #  a = obs_act[0, :(self.obs_size+self.act_size)]
+            #  b = torch.cat((obs[0,i], act[0,i]), dim=0)
+            #  print(f'a = {a}')
+            #  print(f'b = {b}')
+            #  assert((a == b).all())
+
             q1 = self.Q1(obs_act) # shape=(N, 1)
             q2 = self.Q2(obs_act)
 
@@ -111,13 +117,10 @@ class DoubleQNetwork(nn.Module):
 
 
 ## Policy for use in the UnitActionsEnv
-#
-#  https://github.com/ku2482/soft-actor-critic.pytorch.git
-#  https://stackoverflow.com/questions/54569726/how-does-rl-continuous-control-via-gaussian-policy-work
 class TanhGaussianPolicy(nn.Module):
     LOG_STD_MIN: float=-20.
     LOG_STD_MAX: float=2.
-    EPS: float=1e-6
+    EPS:         float=1e-6
 
     def __init__(self,
             n_agents: int,
@@ -134,18 +137,21 @@ class TanhGaussianPolicy(nn.Module):
         self.activation    = activation
 
         # input: state, output: means in each dim, then stds in each dim
+        self.input_size  = obs_size
+        self.output_size = 2 * act_size
         self.policy = LinearNetwork(
-            obs_size, act_size * 2, hidden_layers, activation)
+            self.input_size, self.output_size, hidden_layers, activation)
 
     ## Returns the means and log_stds at the given state, for one agent (Gaussian, no Tanh)
     def forward(self, obs: torch.Tensor) -> \
             Tuple[torch.Tensor, torch.Tensor]:
 
         assert(len(obs.shape) == 2)  # shape=(N, obs_size)
-        assert(obs.shape[1] ==self.obs_size)
+        assert(obs.shape[1]   == self.obs_size)
         N = obs.shape[0] # sample size
 
-        mean, log_std = torch.chunk(self.policy(obs), 2, dim=-1) # divide last dimension
+        # divide last dimension
+        mean, log_std = torch.chunk(self.policy(obs), 2, dim=-1)
         log_std = torch.clamp(log_std, min=self.LOG_STD_MIN, max=self.LOG_STD_MAX)
 
         return mean, log_std
@@ -157,8 +163,8 @@ class TanhGaussianPolicy(nn.Module):
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 
         assert(len(obs.shape) == 3)  # shape=(N, n_agents, obs_size)
-        assert(obs.shape[1] ==self.n_agents)
-        assert(obs.shape[2] ==self.obs_size)
+        assert(obs.shape[1]   == self.n_agents)
+        assert(obs.shape[2]   == self.obs_size)
         N = obs.shape[0] # sample size
 
         means = torch.empty((N, self.n_agents, self.act_size))

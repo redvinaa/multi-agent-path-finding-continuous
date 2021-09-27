@@ -11,11 +11,11 @@ class UnitActionsEnv(Environment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def step(self, actions: Union[List[List[float]], np.ndarray]):
+    def step(self, actions: Union[List[List[float]], np.ndarray], render: bool):
         # max linear speed is 1 m/s
         # max angular speed is pi/2 rad/s
         actions = np.array(actions)
         actions[:, 0] = (actions[:, 0] + 1) / 2
         actions[:, 1] *= np.pi/2
 
-        return super().step(actions)
+        return super().step(actions, render)
