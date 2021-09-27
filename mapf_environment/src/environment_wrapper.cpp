@@ -29,13 +29,12 @@
 RosEnvironment::RosEnvironment(ros::NodeHandle _nh):
         nh(_nh), it(_nh)
 {
-    std::string default_map_path = ros::package::getPath("mapf_environment") + "/maps/test_4x4.jpg";
     double physics_step_size, laser_max_angle, laser_max_dist, robot_diam;
     int laser_nrays, max_steps, number_of_agents;
     bool draw_laser, draw_noisy_pose;
 
     // read parameters
-    nh.param<std::string>("map_path",     map_path,          default_map_path);
+    nh.param<std::string>("map_path",     map_path,          "empty_4x4");
     nh.param<int>("number_of_agents",     number_of_agents,  2);
     nh.param<double>("physics_step_size", physics_step_size, 0.1);
     nh.param<double>("laser_max_angle",   laser_max_angle,   45*M_PI/180);
@@ -46,8 +45,10 @@ RosEnvironment::RosEnvironment(ros::NodeHandle _nh):
     nh.param<bool>("draw_laser",          draw_laser,        true);
     nh.param<bool>("draw_noisy_pose",     draw_noisy_pose,   true);
 
+    std::string full_map_path = ros::package::getPath("mapf_environment") + "/maps/" + map_path + ".jpg";
+
     env = std::make_shared<Environment>(
-        map_path,
+        full_map_path,
         number_of_agents,
         physics_step_size,
         1,

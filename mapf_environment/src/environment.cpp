@@ -34,6 +34,7 @@ Environment::Environment(std::string _map_path,
     bool         _draw_noisy_pose /* false */,
     float        _goal_reaching_reward /* 1. */,
     float        _collision_reward /* -0.5 */,
+    float        _goal_distance_reward_mult /* -0.05 */,
     float        _noise /* 0.01 */,
     unsigned int _seed /* 0 */):
         gravity(0, 0),
@@ -41,24 +42,25 @@ Environment::Environment(std::string _map_path,
         normal_dist(0., _noise),
         uniform_dist(0., 1.)
 {
-    map_path             = _map_path;
-    number_of_agents     = _number_of_agents;
-    physics_step_size    = _physics_step_size;
-    step_multiply        = _step_multiply;
-    laser_max_angle      = _laser_max_angle;
-    laser_max_dist       = _laser_max_dist;
-    robot_diam           = _robot_diam;
-    velocity_iterations  = _velocity_iterations;
-    position_iterations  = _position_iterations;
-    render_height        = _render_height;
-    laser_nrays          = _laser_nrays;
-    max_steps            = _max_steps;
-    draw_laser           = _draw_laser;
-    draw_noisy_pose      = _draw_noisy_pose;
-    goal_reaching_reward = _goal_reaching_reward;
-    collision_reward     = _collision_reward;
-    noise                = _noise;
-    seed                 = _seed;
+    map_path                  = _map_path;
+    number_of_agents          = _number_of_agents;
+    physics_step_size         = _physics_step_size;
+    step_multiply             = _step_multiply;
+    laser_max_angle           = _laser_max_angle;
+    laser_max_dist            = _laser_max_dist;
+    robot_diam                = _robot_diam;
+    velocity_iterations       = _velocity_iterations;
+    position_iterations       = _position_iterations;
+    render_height             = _render_height;
+    laser_nrays               = _laser_nrays;
+    max_steps                 = _max_steps;
+    draw_laser                = _draw_laser;
+    draw_noisy_pose           = _draw_noisy_pose;
+    goal_reaching_reward      = _goal_reaching_reward;
+    collision_reward          = _collision_reward;
+    goal_distance_reward_mult = _goal_distance_reward_mult;
+    noise                     = _noise;
+    seed                      = _seed;
 
     generator = std::make_shared<std::default_random_engine>(_seed);
 
@@ -297,7 +299,7 @@ void Environment::add_agent()
     }
 }
 
-std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::step_physics()
+std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::step_physics(bool render/*=false*/)
 {
     if (done == true)
         throw std::runtime_error("Attempted to step environment that is finished. Call reset() first");
@@ -357,6 +359,11 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::ste
 
                 reached_goal[i] = true;
             }
+        }
+
+        if (render)
+        {
+            this->render(physics_step_size * 1000);
         }
     }
 
@@ -538,7 +545,7 @@ void Environment::render(int wait)
 }
 
 std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool>>
-    Environment::step(std::vector<std::vector<float>> actions)
+    Environment::step(std::vector<std::vector<float>> actions, bool render/*=false*/)
 {
     assert(actions.size() == number_of_agents);
     for (auto act : actions)
@@ -558,7 +565,7 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool
     std::get<1>(ret).resize(number_of_agents);
     std::get<2>(ret).resize(number_of_agents);
 
-    auto obs_and_reward = step_physics();
+    auto obs_and_reward = step_physics(render);
     last_observation = std::get<0>(obs_and_reward);  // save observations for rendering
     current_steps++;
 
@@ -623,6 +630,10 @@ std::tuple<std::vector<float>, float> Environment::get_observation(int agent_ind
         reward = goal_reaching_reward;
     else if (collisions[agent_index])
         reward = collision_reward;
+
+    float goal_distance = (position - goal_positions[agent_index]).Length();
+    reward += std::sqrt(goal_distance) * goal_distance_reward_mult;
+
     std::get<1>(obs_and_reward) = reward;
 
     return obs_and_reward;

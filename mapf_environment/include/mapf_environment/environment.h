@@ -45,7 +45,7 @@ class Environment
         bool draw_laser, draw_noisy_pose, done;
         float block_size, scale_factor, laser_max_angle, laser_max_dist,
             robot_diam, robot_radius, map_width, map_height,
-            goal_reaching_reward, collision_reward,
+            goal_reaching_reward, collision_reward, goal_distance_reward_mult,
             episode_sim_time, noise;
         std::string map_path;
         int render_height, laser_nrays, step_multiply,
@@ -100,11 +100,12 @@ class Environment
          *
          * After that, the environment checks if any of the agents reached their
          * goals. If yes, then for the given agents a new goal is generated.
+         * \param render See step()
          * \return Tuple of the observations for the agents and rewards
          * \exception std::runtime_error Raised if done == true
          * \sa get_observation(), step()
          */
-        std::tuple<std::vector<std::vector<float>>, std::vector<float>> step_physics();
+        std::tuple<std::vector<std::vector<float>>, std::vector<float>> step_physics(bool render = false);
 
         /*! \brief Save the linear and angular velocity of the
          * given agent
@@ -163,28 +164,31 @@ class Environment
          * \param _draw_noisy_pose Wether to show on rendering the agents' position with noise
          * \param _goal_reaching_reward Reward for reaching the goal (only if all the other agents reach their goal too)
          * \param _collision_reward Added reward in the case of a collision
+         * \param _goal_distance_reward_mult Multiply this by the
+         *  square root of the goal distance from the agent and add to the reward
          * \param _noise Zero mean Gaussian noise applied to agent_pose and scan in the Observations
          * \param _seed Seed to generate random numbers
          * \sa init_map(), init_physics()
          */
         Environment(std::string _map_path,
-            int          _number_of_agents     = 2,
-            float        _physics_step_size    = 0.01,
-            int          _step_multiply        = 50,
-            float        _laser_max_angle      = 45.*M_PI/180.,
-            float        _laser_max_dist       = 10.,
-            float        _robot_diam           = 0.8,
-            int          _velocity_iterations  = 6,
-            int          _position_iterations  = 2,
-            int          _render_height        = 700,
-            int          _laser_nrays          = 10,
-            int          _max_steps            = 60,
-            bool         _draw_laser           = false,
-            bool         _draw_noisy_pose      = false,
-            float        _goal_reaching_reward = 1.,
-            float        _collision_reward     = -0.5,
-            float        _noise                = 0.01,
-            unsigned int _seed                 = 0);
+            int          _number_of_agents          = 2,
+            float        _physics_step_size         = 0.1,
+            int          _step_multiply             = 10,
+            float        _laser_max_angle           = 45.*M_PI/180.,
+            float        _laser_max_dist            = 10.,
+            float        _robot_diam                = 0.8,
+            int          _velocity_iterations       = 6,
+            int          _position_iterations       = 2,
+            int          _render_height             = 700,
+            int          _laser_nrays               = 10,
+            int          _max_steps                 = 30,
+            bool         _draw_laser                = false,
+            bool         _draw_noisy_pose           = false,
+            float        _goal_reaching_reward      = 1.,
+            float        _collision_reward          = -0.5,
+            float        _goal_distance_reward_mult = -0.05,
+            float        _noise                     = 0.01,
+            unsigned int _seed                      = 0);
 
         /*! \brief Set done=false, generate new starting positions and goals for all agents
          * \return First observation
@@ -211,10 +215,11 @@ class Environment
          * Based loosely on OpenAI Gym API
          *
          * \param actions vector of actions for every agens (size = no_agents * 2)
+         * \param render If true, the env is rendered at every physics step, and waits
          * \return Tuple of vectors: (obs, reward, done)
          */
         std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool>>
-            step(std::vector<std::vector<float>> actions);
+            step(std::vector<std::vector<float>> actions, bool render = false);
 
         /*! \brief Is the episode over
          */
