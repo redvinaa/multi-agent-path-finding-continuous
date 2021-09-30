@@ -20,23 +20,12 @@
 
 Environment::Environment(std::string _map_path,
     int          _number_of_agents /* 2 */,
-    float        _physics_step_size /* 0.01 */,
-    int          _step_multiply /* 50 */,
-    float        _laser_max_angle /* 45.*M_PI/180. */,
-    float        _laser_max_dist /* 10. */,
+    unsigned int _seed /* 0 */,
+    int          _max_steps /* 30 */,
     float        _robot_diam /* 0.8 */,
-    int          _velocity_iterations /* 6 */,
-    int          _position_iterations /* 2 */,
-    int          _render_height /* 700 */,
-    int          _laser_nrays /* 10 */,
-    int          _max_steps /* 60 */,
-    bool         _draw_laser /* false */,
-    bool         _draw_noisy_pose /* false */,
-    float        _goal_reaching_reward /* 1. */,
-    float        _collision_reward /* -0.5 */,
-    float        _goal_distance_reward_mult /* -0.05 */,
-    float        _noise /* 0.01 */,
-    unsigned int _seed /* 0 */):
+    float        _noise /* 0.00 */,
+    float        _physics_step_size /* 0.01 */,
+    int          _step_multiply /* 50 */):
         gravity(0, 0),
         world(gravity),
         normal_dist(0., _noise),
@@ -46,21 +35,23 @@ Environment::Environment(std::string _map_path,
     number_of_agents          = _number_of_agents;
     physics_step_size         = _physics_step_size;
     step_multiply             = _step_multiply;
-    laser_max_angle           = _laser_max_angle;
-    laser_max_dist            = _laser_max_dist;
     robot_diam                = _robot_diam;
-    velocity_iterations       = _velocity_iterations;
-    position_iterations       = _position_iterations;
-    render_height             = _render_height;
-    laser_nrays               = _laser_nrays;
     max_steps                 = _max_steps;
-    draw_laser                = _draw_laser;
-    draw_noisy_pose           = _draw_noisy_pose;
-    goal_reaching_reward      = _goal_reaching_reward;
-    collision_reward          = _collision_reward;
-    goal_distance_reward_mult = _goal_distance_reward_mult;
     noise                     = _noise;
     seed                      = _seed;
+
+    // hardcoded params
+    laser_max_angle           = 45. * M_PI / 180.;
+    laser_max_dist            = 10.;
+    velocity_iterations       = 6;
+    position_iterations       = 2;
+    render_height             = 900;
+    laser_nrays               = 10;
+    draw_laser                = false;
+    draw_noisy_pose           = false;
+    goal_reaching_reward      = 1.;
+    collision_reward          = -0.5;
+    goal_distance_reward_mult = -0.05;
 
     generator = std::make_shared<std::default_random_engine>(_seed);
 

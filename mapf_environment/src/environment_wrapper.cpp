@@ -29,43 +29,29 @@
 RosEnvironment::RosEnvironment(ros::NodeHandle _nh):
         nh(_nh), it(_nh)
 {
-    double physics_step_size, laser_max_angle, laser_max_dist, robot_diam;
-    int laser_nrays, max_steps, number_of_agents;
-    bool draw_laser, draw_noisy_pose;
+    double robot_diam;
+    int number_of_agents;
 
     // read parameters
     nh.param<std::string>("map_path",     map_path,          "empty_4x4");
     nh.param<int>("number_of_agents",     number_of_agents,  2);
-    nh.param<double>("physics_step_size", physics_step_size, 0.1);
-    nh.param<double>("laser_max_angle",   laser_max_angle,   45*M_PI/180);
-    nh.param<double>("laser_max_dist",    laser_max_dist,    10);
     nh.param<double>("robot_diam",        robot_diam,        0.8);
-    nh.param<int>("laser_nrays",          laser_nrays,       10);
-    nh.param<int>("max_steps",            max_steps,         150);
-    nh.param<bool>("draw_laser",          draw_laser,        true);
-    nh.param<bool>("draw_noisy_pose",     draw_noisy_pose,   true);
 
     std::string full_map_path = ros::package::getPath("mapf_environment") + "/maps/" + map_path + ".jpg";
 
     env = std::make_shared<Environment>(
         full_map_path,
         number_of_agents,
-        physics_step_size,
-        1,
-        laser_max_angle,
-        laser_max_dist,
+        0,  // seed
+        0,  // max_steps
         robot_diam,
-        6,
-        2,
-        1200,
-        laser_nrays,
-        max_steps,
-        draw_laser,
-        draw_noisy_pose);
+        0.,  // noise
+        0.01,  // physics_step_size
+        4);  // step_multiply
 
     // initialize ros communication
     render_publisher     = it.advertise("image", 1);
-    physics_timer = nh.createTimer(ros::Duration(physics_step_size), &RosEnvironment::step, this);
+    physics_timer = nh.createTimer(ros::Duration(0.01), &RosEnvironment::step, this);
 
     coll_action.resize(env->get_number_of_agents());
     for (auto& act : coll_action)

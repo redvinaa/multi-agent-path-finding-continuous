@@ -152,43 +152,20 @@ class Environment
          * \param _number_of_agents Set number of agents to generate
          * \param _physics_step_size Time delta for the physics engine
          * \param _step_multiply When step_physics() gets called, step the environment this many times
-         * \param _laser_max_angle The angle of the laser raycast from the centerline
-         * \param _laser_max_dist Maximum distance for the raycast
          * \param _robot_diam Diameter of the simulated robots (one pixel on the map is 1 meter)
-         * \param _velocity_iterations Parameter of the box2d physics engine
-         * \param _position_iterations Parameter of the box2d physics engine
-         * \param _render_height Height of the rendered image (from which the width is given)
-         * \param _laser_nrays Number of rays for the raycast
          * \param _max_steps The episode is ended after this many steps
-         * \param _draw_laser Wether to show the raycasts on the rendered image
-         * \param _draw_noisy_pose Wether to show on rendering the agents' position with noise
-         * \param _goal_reaching_reward Reward for reaching the goal (only if all the other agents reach their goal too)
-         * \param _collision_reward Added reward in the case of a collision
-         * \param _goal_distance_reward_mult Multiply this by the
-         *  square root of the goal distance from the agent and add to the reward
          * \param _noise Zero mean Gaussian noise applied to agent_pose and scan in the Observations
          * \param _seed Seed to generate random numbers
          * \sa init_map(), init_physics()
          */
         Environment(std::string _map_path,
             int          _number_of_agents          = 2,
-            float        _physics_step_size         = 0.1,
-            int          _step_multiply             = 10,
-            float        _laser_max_angle           = 45.*M_PI/180.,
-            float        _laser_max_dist            = 10.,
-            float        _robot_diam                = 0.8,
-            int          _velocity_iterations       = 6,
-            int          _position_iterations       = 2,
-            int          _render_height             = 700,
-            int          _laser_nrays               = 10,
+            unsigned int _seed                      = 0,
             int          _max_steps                 = 30,
-            bool         _draw_laser                = false,
-            bool         _draw_noisy_pose           = false,
-            float        _goal_reaching_reward      = 1.,
-            float        _collision_reward          = -0.5,
-            float        _goal_distance_reward_mult = -0.05,
-            float        _noise                     = 0.01,
-            unsigned int _seed                      = 0);
+            float        _robot_diam                = 0.8,
+            float        _noise                     = 0.00,
+            float        _physics_step_size         = 0.1,
+            int          _step_multiply             = 10);
 
         /*! \brief Set done=false, generate new starting positions and goals for all agents
          * \return First observation

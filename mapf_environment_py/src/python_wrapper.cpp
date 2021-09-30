@@ -12,27 +12,15 @@ PYBIND11_MODULE(mapf_env, m)
     m.doc() = "Multi-agent path finding environment python wrapper";
 
     py::class_<Environment>(m, "Environment", "Environment for multi-agent path finding simulation")
-    .def(py::init<std::string, int, float, int, float, float, float, int, int, int, int, int,
-        bool, bool, float, float, float, float, unsigned int>(),
+    .def(py::init<std::string, int, unsigned int, int, float, float, float, int>(),
         py::arg("map_path"),
         py::arg("number_of_agents")          = 2,
-        py::arg("physics_step_size")         = 0.1,
-        py::arg("step_multiply")             = 10,
-        py::arg("laser_max_angle")           = 45.*M_PI/180.,
-        py::arg("laser_max_dist")            = 10.,
-        py::arg("robot_diam")                = 0.8,
-        py::arg("velocity_iterations")       = 6,
-        py::arg("position_iterations")       = 2,
-        py::arg("render_height")             = 700,
-        py::arg("laser_nrays")               = 10,
+        py::arg("seed")                      = 0,
         py::arg("max_steps")                 = 30,
-        py::arg("draw_laser")                = false,
-        py::arg("draw_noisy_pose")           = false,
-        py::arg("goal_reaching_reward")      = 1.,
-        py::arg("collision_reward")          = -0.5,
-        py::arg("goal_distance_reward_mult") = -0.1,
+        py::arg("robot_diam")                = 0.8,
         py::arg("noise")                     = 0.01,
-        py::arg("seed")                      = 0
+        py::arg("physics_step_size")         = 0.1,
+        py::arg("step_multiply")             = 10
         )
     .def("reset",        &Environment::reset,
         "Set done=false, generate new starting positions and goals for all agents")
