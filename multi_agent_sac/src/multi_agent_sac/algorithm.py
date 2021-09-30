@@ -2,7 +2,7 @@ import os
 import torch
 import numpy as np
 from multi_agent_sac.network import DoubleQNetwork, TanhGaussianPolicy
-from multi_agent_sac.misc import soft_update, grad_false, update_params
+from multi_agent_sac.misc import soft_update, hard_update, grad_false, update_params
 from copy import deepcopy
 from tensorboardX import SummaryWriter
 from typing import List, Tuple, Optional
@@ -38,24 +38,27 @@ class MASAC:
             model_dir: str,
             alpha: float=None,
             auto_entropy: bool=False,
-            logger: Optional[SummaryWriter]=None):
+            device: str):
 
         self.n_agents      = n_agents
         self.obs_size      = obs_size
         self.act_size      = act_size
         self.gamma         = gamma
         self.tau           = tau
-        self.alpha         = alpha
         self.auto_entropy  = auto_entropy
         self.actor_hidden  = actor_hidden
         self.critic_hidden = critic_hidden
         self.model_dir     = model_dir
-        self.logger        = logger
+        self.device        = device
 
-        self.policy        = TanhGaussianPolicy(n_agents, obs_size, act_size, actor_hidden)
+        self.policy        = TanhGaussianPolicy(n_agents, obs_size, \
+            act_size, actor_hidden).to(self.device)
 
-        self.critic        = DoubleQNetwork(n_agents, obs_size, act_size, critic_hidden)
-        self.tgt_critic    = deepcopy(self.critic)
+        self.critic        = DoubleQNetwork(n_agents, obs_size, \
+            act_size, critic_hidden).to(self.device)
+        self.tgt_critic    = DoubleQNetwork(n_agents, obs_size, \
+            act_size, critic_hidden).to(self.device).eval()
+        hard_update(self.tgt_critic, self.critic)
         grad_false(self.tgt_critic)
 
         self.policy_optim   = torch.optim.Adam(self.policy.parameters())
@@ -64,10 +67,14 @@ class MASAC:
 
         if self.auto_entropy:
             # TODO(redvinaa): Not sure if target_entropy is right
-            self.target_entropy = -torch.tensor([self.n_agents * self.act_size])
-            self.log_alpha      = torch.zeros((1,), requires_grad=True)
+            self.target_entropy = \
+                -torch.tensor([self.n_agents * self.act_size]).to(self.device).item()
+            self.log_alpha      = \
+                torch.zeros((1,), requires_grad=True, device=self.device)
             self.alpha          = self.log_alpha.exp()
             self.entropy_optim  = torch.optim.Adam([self.log_alpha])
+        else:
+            self.alpha         = torch.Tensor(alpha, device=self.device)
 
 
     ## Calculate loss for policy update
@@ -124,12 +131,12 @@ class MASAC:
     ## Update critic and policy based on the sampled batch
     #
     #  @param sample tuple of np.ndarrays-s: (obs, act, rew, next_obs, d)
-    #  @param step Index of training step (for logger)
     def update(self, sample: Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, \
-            np.ndarray], step: Optional[int]=None) -> type(None):
+            np.ndarray]) -> type(None):
 
         # convert to tensors
-        sample = tuple([torch.from_numpy(i.astype(np.float32)) for i in sample])
+        sample = tuple([torch.from_numpy(i.astype(np.float32)).to(self.device) \
+            for i in sample])
         obs, act, rew, next_obs, d = sample
 
         # get losses and update
@@ -140,13 +147,6 @@ class MASAC:
         policy_loss, entropy = self.__get_policy_loss(sample)
         update_params(self.policy_optim, policy_loss)
 
-        # log
-        if self.logger and step:
-            self.logger.add_scalar('loss/policy', policy_loss.item(), step)
-            self.logger.add_scalars('loss/critic', {
-                'critic_1': q1_loss.item(),
-                'critic_2': q2_loss.item()}, step)
-
         # update target networks
         soft_update(self.tgt_critic, self.critic, self.tau)
 
@@ -155,8 +155,12 @@ class MASAC:
             entropy_loss = self.__get_entropy_loss(entropy)
             update_params(self.entropy_optim, entropy_loss)
             self.alpha = self.log_alpha.exp()
-            self.logger.add_scalar('loss/entropy', entropy_loss.item(), step)
-            self.logger.add_scalar('log_alpha', self.log_alpha.item(), step)
+
+        if self.auto_entropy:
+            return q1_loss.item(), q2_loss.item(), \
+                policy_loss.item(), entropy_loss.item()
+        else:
+            return q1_loss.item(), q2_loss.item(), policy_loss.item()
 
 
     ## Get actions for the given observations (no target parameters)
@@ -168,7 +172,7 @@ class MASAC:
 
         assert(obs.shape == (self.n_agents, self.obs_size))
 
-        obs = torch.Tensor(obs).unsqueeze(0)
+        obs = torch.Tensor(obs).to(self.device).unsqueeze(0)
         act_explore, entropy, act_det = self.policy.sample(obs)
         if explore:
             act = act_explore

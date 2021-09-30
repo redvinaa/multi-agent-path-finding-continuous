@@ -184,6 +184,6 @@ class TanhGaussianPolicy(nn.Module):
         # entropies
         log_probs = dist.log_prob(act_sampled) \
             - torch.log(1 - act_sampled_tanh.square() + self.EPS)
-        entropies = -log_probs.sum(dim=-1, keepdim=True) # sum in actions dim
+        entropies = -log_probs.sum(dim=-1, keepdim=False) # sum in actions dim
 
-        return act_sampled, entropies, torch.tanh(means)
+        return act_sampled_tanh, entropies, torch.tanh(means)

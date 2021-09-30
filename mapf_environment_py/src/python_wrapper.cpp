@@ -30,7 +30,7 @@ PYBIND11_MODULE(mapf_env, m)
         py::arg("draw_noisy_pose")           = false,
         py::arg("goal_reaching_reward")      = 1.,
         py::arg("collision_reward")          = -0.5,
-        py::arg("goal_distance_reward_mult") = -0.05,
+        py::arg("goal_distance_reward_mult") = -0.1,
         py::arg("noise")                     = 0.01,
         py::arg("seed")                      = 0
         )
