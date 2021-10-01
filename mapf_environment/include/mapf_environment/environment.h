@@ -38,25 +38,29 @@ class Environment
 
         // other fields
         std::vector<cv::Scalar> agent_colors;
-        std::vector<std::vector<float>> current_actions;
+        std::vector<std::vector<float>> current_actions, laser_scans, last_observation;
         std::vector<bool> collisions;
-        std::vector<std::vector<float>> laser_scans;
-        std::vector<std::vector<float>> last_observation;
+        std::vector<std::tuple<float, float>> obstacle_positions;
+        std::tuple<float, float> map_size;  // width, height
+        std::vector<int> map_indices;
         bool draw_laser, draw_noisy_pose, done;
         float block_size, scale_factor, laser_max_angle, laser_max_dist,
-            robot_diam, robot_radius, map_width, map_height,
-            goal_reaching_reward, collision_reward, goal_distance_reward_mult,
-            episode_sim_time, noise;
+            robot_diam, robot_radius, goal_reaching_reward, collision_reward,
+            goal_distance_reward_mult, episode_sim_time, noise, obstacle_width,
+            obstacle_height;
         std::string map_path;
-        int render_height, laser_nrays, step_multiply,
-            number_of_agents, max_steps, current_steps;
+        int render_height, laser_nrays, step_multiply, number_of_agents,
+            max_steps, current_steps, resolution_per_pix;
         unsigned int seed;
-        cv::Mat map_image_raw, map_image, rendered_image;
+        cv::Mat map_image_raw, map_image, rendered_image, map_safety;
         cv::Scalar color;
 
         std::shared_ptr<std::default_random_engine> generator;
         std::normal_distribution<float> normal_dist;
         std::uniform_real_distribution<float> uniform_dist;
+
+        /*! \brief Calculate position from pixel on a map */
+        std::tuple<float, float> pix_to_pos(int col, int row, cv::Size image_size) const;
 
         /*! \brief Load map
          *
@@ -70,6 +74,17 @@ class Environment
          * Physics coorinates use the Box2d convention.
          */
         void init_physics(void);
+
+        /* \brief Calculates the distance between a rectangular obstacle and a point
+         *
+         * \param pt_x x coordinate of point
+         * \param pt_y y coordinate of point
+         * \param obst_x x coordinate of obstacle center
+         * \param obst_y y coordinate of obstacle center
+         * \return distance
+         */
+        float distance_from_obstacle(float pt_x, float pt_y,
+            float obst_x, float obst_y) const;
 
         /*! \brief Randomly find an empty place on the map (no obstacles and no other agents nearby)
          *
@@ -132,7 +147,7 @@ class Environment
          */
         std::tuple<std::vector<float>, float> get_observation(int agent_index, bool reached_goal);
 
-        FRIEND_TEST(EnvironmentCore, constructorRuns);
+        FRIEND_TEST(EnvironmentCore,    constructorRuns);
         FRIEND_TEST(EnvironmentFixture, testConstructor);
         FRIEND_TEST(EnvironmentFixture, testMap);
         FRIEND_TEST(EnvironmentFixture, testPhysics);
@@ -149,6 +164,7 @@ class Environment
         /*! \brief Sets the default parameters, and calls init_map() and init_physics()
          *
          * \param _map_path Map image to load
+         * \param _map_size  Real-life size of the area, in meters, width, height
          * \param _number_of_agents Set number of agents to generate
          * \param _physics_step_size Time delta for the physics engine
          * \param _step_multiply When step_physics() gets called, step the environment this many times
@@ -158,14 +174,16 @@ class Environment
          * \param _seed Seed to generate random numbers
          * \sa init_map(), init_physics()
          */
-        Environment(std::string _map_path,
-            int          _number_of_agents          = 2,
-            unsigned int _seed                      = 0,
-            int          _max_steps                 = 30,
-            float        _robot_diam                = 0.8,
-            float        _noise                     = 0.00,
-            float        _physics_step_size         = 0.1,
-            int          _step_multiply             = 10);
+        Environment(
+            std::string              _map_path,
+            std::tuple<float, float> _map_size,
+            int                      _number_of_agents  = 2,
+            unsigned int             _seed              = 0,
+            int                      _max_steps         = 30,
+            float                    _robot_diam        = 0.8,
+            float                    _noise             = 0.00,
+            float                    _physics_step_size = 0.1,
+            int                      _step_multiply     = 10);
 
         /*! \brief Set done=false, generate new starting positions and goals for all agents
          * \return First observation

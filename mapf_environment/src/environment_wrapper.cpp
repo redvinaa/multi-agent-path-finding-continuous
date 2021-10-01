@@ -41,6 +41,7 @@ RosEnvironment::RosEnvironment(ros::NodeHandle _nh):
 
     env = std::make_shared<Environment>(
         full_map_path,
+        std::make_tuple(4, 4),
         number_of_agents,
         0,  // seed
         0,  // max_steps

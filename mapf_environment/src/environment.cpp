@@ -18,20 +18,23 @@
 #include <memory>
 
 
-Environment::Environment(std::string _map_path,
-    int          _number_of_agents /* 2 */,
-    unsigned int _seed /* 0 */,
-    int          _max_steps /* 30 */,
-    float        _robot_diam /* 0.8 */,
-    float        _noise /* 0.00 */,
-    float        _physics_step_size /* 0.01 */,
-    int          _step_multiply /* 50 */):
+Environment::Environment(
+    std::string              _map_path,
+    std::tuple<float, float> _map_size,
+    int                      _number_of_agents /* 2 */,
+    unsigned int             _seed /* 0 */,
+    int                      _max_steps /* 30 */,
+    float                    _robot_diam /* 0.8 */,
+    float                    _noise /* 0.00 */,
+    float                    _physics_step_size /* 0.01 */,
+    int                      _step_multiply /* 50 */):
         gravity(0, 0),
         world(gravity),
         normal_dist(0., _noise),
         uniform_dist(0., 1.)
 {
     map_path                  = _map_path;
+    map_size                  = _map_size;
     number_of_agents          = _number_of_agents;
     physics_step_size         = _physics_step_size;
     step_multiply             = _step_multiply;
@@ -52,10 +55,10 @@ Environment::Environment(std::string _map_path,
     goal_reaching_reward      = 1.;
     collision_reward          = -0.5;
     goal_distance_reward_mult = -0.05;
+    resolution_per_pix        = 5;
 
     generator = std::make_shared<std::default_random_engine>(_seed);
 
-    assert(robot_diam < 1.);
     assert(number_of_agents > 0);
     assert(laser_nrays > 0);
 
@@ -74,18 +77,97 @@ void Environment::init_map(void)
     map_image_raw = cv::imread(map_path, cv::IMREAD_GRAYSCALE);
     if (map_image_raw.empty()) throw std::runtime_error("Map image not found: '" + map_path + "'");
 
-    map_width = map_image_raw.size().width;
-    map_height = map_image_raw.size().height;
-    scale_factor = static_cast<float>(render_height) / map_height;
+    scale_factor = static_cast<float>(render_height) / std::get<1>(map_size);
 
     cv::resize(map_image_raw, map_image, cv::Size(), scale_factor, scale_factor, cv::INTER_AREA);
     cv::cvtColor(map_image, map_image, cv::COLOR_GRAY2BGR);
     map_image.copyTo(rendered_image);  // set size of rendered image
+
+    obstacle_width  = std::get<0>(map_size) / map_image_raw.size().width;
+    obstacle_height = std::get<1>(map_size) / map_image_raw.size().height;
+
+    // calculate obstacle positions
+    for (int row = 0; row < map_image_raw.rows; ++row)
+    {
+        uchar* p = map_image_raw.ptr(row);
+        for (int col = 0; col < map_image_raw.cols; ++col)
+        {
+            int pixel_value = *p;
+            if (pixel_value < 255/2)  // 0 means obstacle
+            {
+                float x_pos = col + obstacle_width/2.;
+                float y_pos = std::get<1>(map_size) - row - obstacle_height/2.;
+                auto pos    = std::make_tuple(x_pos, y_pos);
+                obstacle_positions.push_back(pos);
+            }
+            p++;  // points to each pixel value in turn assuming a CV_8UC1 greyscale image
+        }
+    }
+
+    // create map with safety zones
+    // used for spawning agents, goals and global path planning
+    float safety_dist = robot_radius + 1e-3;
+    cv::resize(map_image_raw, map_safety, cv::Size(map_image_raw.size().width * resolution_per_pix,
+        map_image_raw.size().height * resolution_per_pix), 0, 0, cv::INTER_AREA);
+
+    for (int row = 0; row < map_safety.rows; ++row)
+    {
+        uchar* p = map_safety.ptr(row);
+        for (int col = 0; col < map_safety.cols; ++col)
+        {
+            int pixel_value = *p;
+            if (pixel_value > 255./2)  // no obstacle
+            {
+                float x_pos, y_pos;
+                std::tie(x_pos, y_pos) = pix_to_pos(col, row, map_safety.size());
+
+                if ((x_pos < safety_dist) || ((std::get<0>(map_size) - x_pos) < safety_dist))
+                    *p = 20;
+                else if ((y_pos < safety_dist) || ((std::get<1>(map_size) - y_pos) < safety_dist))
+                    *p = 20;
+                else
+                    for (auto obst_pos : obstacle_positions)
+                    {
+                        float dist = distance_from_obstacle(x_pos, y_pos,
+                            std::get<0>(obst_pos), std::get<1>(obst_pos));
+
+                        if (dist < safety_dist)  // too close
+                        {
+                            *p = 20;
+                            break;
+                        }
+                    }
+            }
+            p++;
+        }
+    }
+
+    // create vector that stores the indices of free cells
+    int num_index = map_safety.size().width * map_safety.size().height;
+    map_indices.reserve(num_index);
+    for (int i=0; i < num_index; i++)
+    {
+        int col = i % map_safety.size().width;
+        int row = (i - col) / map_safety.size().width;
+
+        if (static_cast<int>(map_safety.at<unsigned char>(row, col)) > 255/2)
+            map_indices.push_back(i);
+    }
+}
+
+std::tuple<float, float> Environment::pix_to_pos(int col, int row, cv::Size image_size) const
+{
+    float x_pos = (col + 0.5) * std::get<0>(map_size) / static_cast<float>(image_size.width);
+    float y_pos = std::get<1>(map_size) - (row + 0.5) * std::get<1>(map_size) / static_cast<float>(image_size.height);
+    return std::make_tuple(x_pos, y_pos);
 }
 
 void Environment::init_physics(void)
 {
-    // create bounding box, (0, 0) is the bottom left corner
+    float map_width  = std::get<0>(map_size)/2.;
+    float map_height = std::get<1>(map_size)/2.;
+
+    // create bounding box, (0, 0) is the center of the map
     b2BodyDef bd;
     bd.position.Set(map_width/2, map_height/2);
     b2Body* ground = world.CreateBody(&bd);
@@ -113,62 +195,57 @@ void Environment::init_physics(void)
     ground->CreateFixture(&sd);
 
     // create static obstacles
-    for (int row = 0; row < map_image_raw.rows; ++row)
+    for (auto obst_pos : obstacle_positions)
     {
-        uchar* p = map_image_raw.ptr(row);
-        for (int col = 0; col < map_image_raw.cols; ++col)
-        {
-            int pixel_value = *p;
-            if (pixel_value < 255/2)
-            {
-                // add obstacle
-                b2BodyDef bd;
-                bd.type = b2_staticBody;
-                float x_pos = col + 0.5;
-                float y_pos = map_height - row - 0.5;
-                bd.position.Set(x_pos, y_pos);
-                b2Body* obst = world.CreateBody(&bd);
+            // add obstacle
+            b2BodyDef bd;
+            bd.type = b2_staticBody;
+            bd.position.Set(std::get<0>(obst_pos), std::get<1>(obst_pos));
+            b2Body* obst = world.CreateBody(&bd);
 
-                b2PolygonShape boxShape;
-                boxShape.SetAsBox(0.5f, 0.5f);
+            b2PolygonShape boxShape;
+            boxShape.SetAsBox(obstacle_width, obstacle_height);
 
-                b2FixtureDef boxFixtureDef;
-                boxFixtureDef.shape = &boxShape;
-                obst->CreateFixture(&boxFixtureDef);
+            b2FixtureDef boxFixtureDef;
+            boxFixtureDef.shape = &boxShape;
+            obst->CreateFixture(&boxFixtureDef);
 
-                obstacle_bodies.push_back(obst);
-            }
-            p++;  // points to each pixel value in turn assuming a CV_8UC1 greyscale image
-        }
+            obstacle_bodies.push_back(obst);
     }
+}
+
+float Environment::distance_from_obstacle(float pt_x, float pt_y,
+            float obst_x, float obst_y) const
+{
+    float obst_bot   = obst_y - obstacle_height / 2.;
+    float obst_top   = obst_y + obstacle_height / 2.;
+    float obst_left  = obst_x - obstacle_width  / 2.;
+    float obst_right = obst_x + obstacle_width  / 2.;
+
+    std::vector<float> x_vals = {obst_left - pt_x, 0, pt_x - obst_right};
+    std::vector<float> y_vals = {obst_bot  - pt_y, 0, pt_y - obst_top};
+    float dx = *std::max_element(x_vals.begin(), x_vals.end());
+    float dy = *std::max_element(y_vals.begin(), y_vals.end());
+    return std::sqrt(dx*dx + dy*dy);
 }
 
 std::pair<float, float> Environment::generate_empty_position() const
 {
-    // number of (flattened) indices on the grid map
-    int num_index = map_image_raw.size().width * map_image_raw.size().height;
-    std::vector<int> map_indices(num_index);
-    for (int i=0; i < num_index; i++)
-    {
-        map_indices[i] = i;
-    }
 
-    std::shuffle(map_indices.begin(), map_indices.end(), *generator);
+    auto map_indices_cpy = map_indices;
+    std::shuffle(map_indices_cpy.begin(), map_indices_cpy.end(), *generator);
 
-    for (auto it = map_indices.begin(); it != map_indices.end(); it++)
+    std::cout << "map width: " << map_safety.size().width << ", height: " << map_safety.size().height << std::endl;
+
+    for (auto it = map_indices_cpy.begin(); it != map_indices_cpy.end(); it++)
     {
         int index = *it;
 
-        // get position from index
-        int row = index / map_image_raw.size().width;
-        int col = index - row * map_image_raw.size().width;  // integer division
-        float x_pos = col + 0.5;  // center of cell
-        float y_pos = map_height - row - 0.5;
+        int col = index % map_safety.size().width;
+        int row = (index - col) / map_safety.size().width;  // integer division
+        float x_pos, y_pos;
+        std::tie(x_pos, y_pos) = pix_to_pos(col, row, map_safety.size());
         b2Vec2 index_position(x_pos, y_pos);
-
-        // check if cell has a wall
-        if (static_cast<int>(map_image_raw.at<unsigned char>(row, col) < 255/2))
-            continue;
 
         // check if any agent is near
         bool somethings_near = false;

@@ -12,8 +12,9 @@ PYBIND11_MODULE(mapf_env, m)
     m.doc() = "Multi-agent path finding environment python wrapper";
 
     py::class_<Environment>(m, "Environment", "Environment for multi-agent path finding simulation")
-    .def(py::init<std::string, int, unsigned int, int, float, float, float, int>(),
+    .def(py::init<std::string, std::tuple<float, float>, int, unsigned int, int, float, float, float, int>(),
         py::arg("map_path"),
+        py::arg("map_size"),
         py::arg("number_of_agents")          = 2,
         py::arg("seed")                      = 0,
         py::arg("max_steps")                 = 30,
