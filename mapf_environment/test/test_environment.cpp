@@ -1,6 +1,8 @@
 // Copyright 2021 Reda Vince
 
 #include "mapf_environment/environment.h"
+#include "mapf_environment/pathfinder.h"
+#include <eigen3/unsupported/Eigen/CXX11/Tensor>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -21,7 +23,7 @@ class EnvironmentFixture : public testing::Test
             std::string pkg_path = ros::package::getPath("mapf_environment");
             std::string image_path = pkg_path + "/maps/test_4x4.jpg";
             environment =
-                new Environment(image_path, /*number_of_agents=*/2, /*physics_step_size=*/0.01, /*step_multiply/*/1);
+                new Environment(image_path, std::make_tuple(4., 4.), 1, 1, 30, 0.5);
         }
 
         void TearDown() override
@@ -236,6 +238,79 @@ TEST_F(EnvironmentFixture, testOsSpace)
     EXPECT_EQ(shape[0], obs[0].size());
 }
 
+TEST(AStar, testAStar)
+{
+    cv::Mat img = cv::Mat::zeros(cv::Size(10, 10), CV_8UC1);
+    img = 255;
+
+    // add an obstacle
+    cv::circle(img, cv::Point(5, 5), 2, 0, -1);
+
+    AStar astar(img, true, true);
+
+    auto generate_pos = [img]()
+    {
+        int start_x, start_y, goal_x, goal_y;
+
+        while (true)
+        {
+            start_x = std::rand() % 10;
+            start_y = std::rand() % 10;
+            if (static_cast<int>(img.at<unsigned char>(start_x, start_y)) > 255/2)
+                break;
+        }
+
+        while (true)
+        {
+            goal_x = std::rand() % 10;
+            goal_y = std::rand() % 10;
+            if ((static_cast<int>(img.at<unsigned char>(goal_x, goal_y)) > 255/2)
+                and not ((start_x == goal_x) and (start_y == goal_y)))
+                break;
+        }
+
+        return std::make_tuple(start_x, start_y, goal_x, goal_y);
+    };
+
+
+    for (int i=0; i < 20; i++)
+    {
+        cv::Mat img_cpy;
+        img.copyTo(img_cpy);
+
+        int start_x, start_y, goal_x, goal_y;
+        std::tie(start_x, start_y, goal_x, goal_y) = generate_pos();
+
+        t_path route = astar.find(start_x, start_y, goal_x, goal_y);
+
+        cv::resize(img_cpy, img_cpy, cv::Size(700, 700), 0, 0, cv::INTER_AREA);
+
+        // draw start and end
+        cv::Point center;
+        center.x = (start_x+0.5) * 700 / 10;
+        center.y = (start_y+0.5) * 700 / 10;
+        cv::circle(img_cpy, center, 700/10/2, 0, -1); // start is full
+        center.x = (goal_x+0.5) * 700 / 10;
+        center.y = (goal_y+0.5) * 700 / 10;
+        cv::circle(img_cpy, center, 700/10/2, 0);
+
+        // draw path
+        int n_pts = route.size() + 1;
+        cv::Point points[n_pts];
+        points[0] = cv::Point((start_x+0.5) * 700 / 10, (start_y+0.5) * 700 / 10);
+        for (int i=1; i < n_pts; i++)
+        {
+            int pt_x = (std::get<0>(route[i-1])+0.5) * 700 / 10;
+            int pt_y = (std::get<1>(route[i-1])+0.5) * 700 / 10;
+            points[i] = cv::Point(pt_x, pt_y);
+        }
+        const cv::Point* ps = points;
+        cv::polylines(img_cpy, &ps, &n_pts, 1, /*closed=*/false, 255/2, 2);
+
+        cv::imshow("Planner", img_cpy);
+        cv::waitKey();
+    }
+}
 
 int main(int argc, char **argv)
 {
