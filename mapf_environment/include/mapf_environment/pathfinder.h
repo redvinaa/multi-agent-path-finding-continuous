@@ -10,6 +10,10 @@
 /*! \brief 2d tensor of path indices */
 using t_path = std::vector<std::tuple<int, int>>;
 
+/*! \brief x, y coordinates */
+using t_point  = std::tuple<float, float>;
+
+/*! \brief Data structure used by the A* algorithm */
 struct Node
 {
     int x;
@@ -17,10 +21,17 @@ struct Node
 
     Node* parent;
 
+    /*! \brief Distance from start */
     int g_cost;
+
+    /*! \brief Distance to goal */
     int h_cost;
+
+    /*! \brief Sum of g_cost and h_cost */
     int f_cost;
 
+    /*! \brief Finds distance between this and another node,
+     *  not taking obstacles into consideration */
     int distance(const Node& other);
 
     Node();
@@ -37,10 +48,10 @@ class AStar
     private:
         cv::Mat grid_map;
         bool diag, init_all;
-        Eigen::Tensor<t_path, 4> paths;
+        Eigen::Tensor<std::tuple<t_path, float>, 4> paths;
 
         /*! \brief This implements the A* algorithm */
-        t_path find_path(int start_x, int start_y, int goal_x, int goal_y) const;
+        std::tuple<t_path, float> find_path(int start_x, int start_y, int goal_x, int goal_y) const;
 
         /*! \brief Calculates the neighbours of the node
          *
@@ -61,9 +72,9 @@ class AStar
 
         /*! \brief Return internally stored path for the given endpoints
          *
-         *  \return Vector of indicies that form the path
+         *  \return Vector of indicies that form the path, and approx. distance to goal
          */
-        t_path find(int start_x, int start_y, int goal_x, int goal_y) const;
+        std::tuple<t_path, float> find(int start_x, int start_y, int goal_x, int goal_y) const;
 };
 
 #endif  // MAPF_ENVIRONMENT_PATHFINDER_H

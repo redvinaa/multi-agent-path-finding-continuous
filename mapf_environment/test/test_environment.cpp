@@ -281,7 +281,10 @@ TEST(AStar, testAStar)
         int start_x, start_y, goal_x, goal_y;
         std::tie(start_x, start_y, goal_x, goal_y) = generate_pos();
 
-        t_path route = astar.find(start_x, start_y, goal_x, goal_y);
+        t_path route;
+        float dist;
+        std::tie(route, dist) = astar.find(start_x, start_y, goal_x, goal_y);
+        std::cout << "Distance: " << dist << std::endl;
 
         cv::resize(img_cpy, img_cpy, cv::Size(700, 700), 0, 0, cv::INTER_AREA);
 
@@ -315,5 +318,6 @@ TEST(AStar, testAStar)
 int main(int argc, char **argv)
 {
     testing::InitGoogleTest(&argc, argv);
+    testing::GTEST_FLAG(filter) = "AStar.testAStar";
     return RUN_ALL_TESTS();
 }

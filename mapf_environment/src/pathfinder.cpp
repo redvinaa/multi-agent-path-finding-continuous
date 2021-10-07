@@ -66,7 +66,7 @@ AStar::AStar(cv::Mat _map, bool _diag, bool _init_all)
     }
 }
 
-t_path AStar::find(int start_x, int start_y, int goal_x, int goal_y) const
+std::tuple<t_path, float> AStar::find(int start_x, int start_y, int goal_x, int goal_y) const
 {
     assert(not ((start_x == goal_x) and (start_y == goal_y)));
     assert(not (static_cast<int>(grid_map.at<unsigned char>(start_y, start_x)) < 255/2));
@@ -77,7 +77,7 @@ t_path AStar::find(int start_x, int start_y, int goal_x, int goal_y) const
     return find_path(start_x, start_y, goal_x, goal_y);
 }
 
-t_path AStar::find_path(int start_x, int start_y, int goal_x, int goal_y) const
+std::tuple<t_path, float> AStar::find_path(int start_x, int start_y, int goal_x, int goal_y) const
 {
     assert(not (static_cast<int>(grid_map.at<unsigned char>(start_y, start_x)) < 255/2));
     assert(not (static_cast<int>(grid_map.at<unsigned char>(goal_y, goal_x)) < 255/2));
@@ -138,7 +138,7 @@ t_path AStar::find_path(int start_x, int start_y, int goal_x, int goal_y) const
             {
                 neig->g_cost = new_cost;
                 neig->h_cost = neig->distance(*goal);
-                neig->f_cost = neig->g_cost + neig->g_cost;
+                neig->f_cost = neig->g_cost + neig->h_cost;
                 neig->parent = current;
 
                 if (std::find(opened.begin(), opened.end(), neig) == opened.end())
@@ -162,7 +162,7 @@ t_path AStar::find_path(int start_x, int start_y, int goal_x, int goal_y) const
     }
 
     std::reverse(p_vec.begin(), p_vec.end());
-    return p_vec;
+    return std::make_tuple(p_vec, goal->f_cost / 10.);
 }
 
 std::vector<Node*> AStar::get_neighbours(Eigen::Tensor<Node, 2> &grid, const Node* node) const
