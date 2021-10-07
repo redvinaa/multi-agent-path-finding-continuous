@@ -2,6 +2,7 @@
 
 #include "mapf_environment/environment.h"
 #include "mapf_environment/raycast_callback.h"
+#include "mapf_environment/pathfinder.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <box2d/box2d.h>
@@ -19,15 +20,15 @@
 
 
 Environment::Environment(
-    std::string              _map_path,
-    std::tuple<float, float> _map_size,
-    int                      _number_of_agents /* 2 */,
-    unsigned int             _seed /* 0 */,
-    int                      _max_steps /* 30 */,
-    float                    _robot_diam /* 0.8 */,
-    float                    _noise /* 0.00 */,
-    float                    _physics_step_size /* 0.01 */,
-    int                      _step_multiply /* 50 */):
+    std::string  _map_path,
+    t_point      _map_size,
+    int          _number_of_agents /* 2 */,
+    unsigned int _seed /* 0 */,
+    int          _max_steps /* 30 */,
+    float        _robot_diam /* 0.8 */,
+    float        _noise /* 0.00 */,
+    float        _physics_step_size /* 0.1 */,
+    int          _step_multiply /* 10 */):
         gravity(0, 0),
         world(gravity),
         normal_dist(0., _noise),
@@ -36,12 +37,12 @@ Environment::Environment(
     map_path                  = _map_path;
     map_size                  = _map_size;
     number_of_agents          = _number_of_agents;
+    seed                      = _seed;
+    max_steps                 = _max_steps;
+    robot_diam                = _robot_diam;
+    noise                     = _noise;
     physics_step_size         = _physics_step_size;
     step_multiply             = _step_multiply;
-    robot_diam                = _robot_diam;
-    max_steps                 = _max_steps;
-    noise                     = _noise;
-    seed                      = _seed;
 
     // hardcoded params
     laser_max_angle           = 45. * M_PI / 180.;
@@ -52,10 +53,12 @@ Environment::Environment(
     laser_nrays               = 10;
     draw_laser                = false;
     draw_noisy_pose           = false;
+    draw_global_path          = true;
     goal_reaching_reward      = 1.;
     collision_reward          = -0.5;
     goal_distance_reward_mult = -0.05;
     resolution_per_pix        = 5;
+    carrot_planner_dist       = 5;
 
     generator = std::make_shared<std::default_random_engine>(_seed);
 
@@ -68,6 +71,13 @@ Environment::Environment(
     init_map();  // load map before physics
     init_physics();
 
+    // calculate paths for map_safety
+    // also where the walls are too close (grey area)
+    cv::Mat map_safety_ext;
+    map_image_raw.copyTo(map_safety_ext);
+    cv::resize(map_safety_ext, map_safety_ext, map_safety.size(), 0, 0, cv::INTER_AREA);
+    astar = std::make_shared<AStar>(map_safety_ext, true, true);
+
     for (int i=0; i < number_of_agents; i++)
         add_agent();
 }
@@ -77,9 +87,15 @@ void Environment::init_map(void)
     map_image_raw = cv::imread(map_path, cv::IMREAD_GRAYSCALE);
     if (map_image_raw.empty()) throw std::runtime_error("Map image not found: '" + map_path + "'");
 
+    safe_pix_width  = std::get<0>(map_size) / map_image_raw.size().width / resolution_per_pix;
+    safe_pix_height = std::get<1>(map_size) / map_image_raw.size().height / resolution_per_pix;
+
+    render_width = render_height * map_image_raw.size().width / map_image_raw.size().height;
+
+    // size in meters to size in rendered pixels
     scale_factor = static_cast<float>(render_height) / std::get<1>(map_size);
 
-    cv::resize(map_image_raw, map_image, cv::Size(), scale_factor, scale_factor, cv::INTER_AREA);
+    cv::resize(map_image_raw, map_image, cv::Size(render_width, render_height), 0, 0, cv::INTER_AREA);
     cv::cvtColor(map_image, map_image, cv::COLOR_GRAY2BGR);
     map_image.copyTo(rendered_image);  // set size of rendered image
 
@@ -95,9 +111,7 @@ void Environment::init_map(void)
             int pixel_value = *p;
             if (pixel_value < 255/2)  // 0 means obstacle
             {
-                float x_pos = col + obstacle_width/2.;
-                float y_pos = std::get<1>(map_size) - row - obstacle_height/2.;
-                auto pos    = std::make_tuple(x_pos, y_pos);
+                auto pos = pix_to_pos(col, row, map_image_raw.size());
                 obstacle_positions.push_back(pos);
             }
             p++;  // points to each pixel value in turn assuming a CV_8UC1 greyscale image
@@ -107,7 +121,9 @@ void Environment::init_map(void)
     // create map with safety zones
     // used for spawning agents, goals and global path planning
     float safety_dist = robot_radius + 1e-3;
-    cv::resize(map_image_raw, map_safety, cv::Size(map_image_raw.size().width * resolution_per_pix,
+
+    map_image_raw.copyTo(map_safety);
+    cv::resize(map_safety, map_safety, cv::Size(map_image_raw.size().width * resolution_per_pix,
         map_image_raw.size().height * resolution_per_pix), 0, 0, cv::INTER_AREA);
 
     for (int row = 0; row < map_safety.rows; ++row)
@@ -122,9 +138,9 @@ void Environment::init_map(void)
                 std::tie(x_pos, y_pos) = pix_to_pos(col, row, map_safety.size());
 
                 if ((x_pos < safety_dist) || ((std::get<0>(map_size) - x_pos) < safety_dist))
-                    *p = 20;
+                    *p = 50;
                 else if ((y_pos < safety_dist) || ((std::get<1>(map_size) - y_pos) < safety_dist))
-                    *p = 20;
+                    *p = 50;
                 else
                     for (auto obst_pos : obstacle_positions)
                     {
@@ -133,7 +149,7 @@ void Environment::init_map(void)
 
                         if (dist < safety_dist)  // too close
                         {
-                            *p = 20;
+                            *p = 50;
                             break;
                         }
                     }
@@ -145,6 +161,7 @@ void Environment::init_map(void)
     // create vector that stores the indices of free cells
     int num_index = map_safety.size().width * map_safety.size().height;
     map_indices.reserve(num_index);
+
     for (int i=0; i < num_index; i++)
     {
         int col = i % map_safety.size().width;
@@ -153,9 +170,10 @@ void Environment::init_map(void)
         if (static_cast<int>(map_safety.at<unsigned char>(row, col)) > 255/2)
             map_indices.push_back(i);
     }
+    map_indices.shrink_to_fit();
 }
 
-std::tuple<float, float> Environment::pix_to_pos(int col, int row, cv::Size image_size) const
+t_point Environment::pix_to_pos(const int col, const int row, const cv::Size image_size) const
 {
     float x_pos = (col + 0.5) * std::get<0>(map_size) / static_cast<float>(image_size.width);
     float y_pos = std::get<1>(map_size) - (row + 0.5) * std::get<1>(map_size) / static_cast<float>(image_size.height);
@@ -164,10 +182,10 @@ std::tuple<float, float> Environment::pix_to_pos(int col, int row, cv::Size imag
 
 void Environment::init_physics(void)
 {
-    float map_width  = std::get<0>(map_size)/2.;
-    float map_height = std::get<1>(map_size)/2.;
+    float map_width  = std::get<0>(map_size);
+    float map_height = std::get<1>(map_size);
 
-    // create bounding box, (0, 0) is the center of the map
+    // create bounding box, (0, 0) is the bottom left corner of the map
     b2BodyDef bd;
     bd.position.Set(map_width/2, map_height/2);
     b2Body* ground = world.CreateBody(&bd);
@@ -204,7 +222,7 @@ void Environment::init_physics(void)
             b2Body* obst = world.CreateBody(&bd);
 
             b2PolygonShape boxShape;
-            boxShape.SetAsBox(obstacle_width, obstacle_height);
+            boxShape.SetAsBox(obstacle_width/2, obstacle_height/2);
 
             b2FixtureDef boxFixtureDef;
             boxFixtureDef.shape = &boxShape;
@@ -214,8 +232,7 @@ void Environment::init_physics(void)
     }
 }
 
-float Environment::distance_from_obstacle(float pt_x, float pt_y,
-            float obst_x, float obst_y) const
+float Environment::distance_from_obstacle(float pt_x, float pt_y, float obst_x, float obst_y) const
 {
     float obst_bot   = obst_y - obstacle_height / 2.;
     float obst_top   = obst_y + obstacle_height / 2.;
@@ -234,8 +251,6 @@ std::pair<float, float> Environment::generate_empty_position() const
 
     auto map_indices_cpy = map_indices;
     std::shuffle(map_indices_cpy.begin(), map_indices_cpy.end(), *generator);
-
-    std::cout << "map width: " << map_safety.size().width << ", height: " << map_safety.size().height << std::endl;
 
     for (auto it = map_indices_cpy.begin(); it != map_indices_cpy.end(); it++)
     {
@@ -280,11 +295,6 @@ std::pair<float, float> Environment::generate_empty_position() const
 
 std::vector<std::vector<float>> Environment::reset()
 {
-    if (number_of_agents < 1)
-    {
-        throw std::runtime_error("Add agents before resetting environment");
-    }
-
     // create new agents with new goals
     for (int i=0; i < number_of_agents; i++)
     {
@@ -500,17 +510,69 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::ste
     return obs_and_rewards;
 }
 
-cv::Mat Environment::get_rendered_pic()
+cv::Mat Environment::get_rendered_pic(bool debug/*=false*/)
 {
-    rendered_image = cv::Scalar(255, 255, 255);
+    assert(not done);
+    if (debug)
+    {
+        map_safety.copyTo(rendered_image);
+        cv::cvtColor(map_safety, rendered_image, cv::COLOR_GRAY2BGR);
+        cv::resize(rendered_image, rendered_image, cv::Size(render_width, render_height), 0, 0, cv::INTER_AREA);
+    }
+    else
+        rendered_image = cv::Scalar(255, 255, 255);
 
     // draw obstacles
-    for (int i=0; i < obstacle_bodies.size(); i++)
+    for (auto obst : obstacle_positions)
     {
-        b2Vec2 pos = obstacle_bodies[i]->GetPosition();
-        cv::Point pt1((pos.x-0.5)*scale_factor, render_height - (pos.y-0.5)*scale_factor);
-        cv::Point pt2((pos.x+0.5)*scale_factor, render_height - (pos.y+0.5)*scale_factor);
+        int pos_left   = (std::get<0>(obst) - obstacle_width/2.) * scale_factor;
+        int pos_right  = (std::get<0>(obst) + obstacle_width/2.) * scale_factor;
+        int pos_top    = render_height - (std::get<1>(obst) - obstacle_height/2.) * scale_factor;
+        int pos_bottom = render_height - (std::get<1>(obst) + obstacle_height/2.) * scale_factor;
+
+        cv::Point pt1(pos_left, pos_bottom);
+        cv::Point pt2(pos_right, pos_top);
         cv::rectangle(rendered_image, pt1, pt2, cv::Scalar(0, 0, 0), -1);
+    }
+
+    // draw paths
+    if (draw_global_path or debug)
+    {
+        for (int i=0; i < number_of_agents; i++)
+        {
+            b2Vec2 agent_pos = agent_bodies[i]->GetPosition();
+            b2Vec2 goal_pos  = goal_positions[i];
+
+            // transform coordinates to pixels
+            int start_x = agent_pos.x / safe_pix_width;
+            int start_y = map_safety.size().height - agent_pos.y / safe_pix_height;
+            int goal_x  = goal_pos.x / safe_pix_width;
+            int goal_y  = map_safety.size().height - goal_pos.y / safe_pix_height;
+
+            t_path route = std::get<0>(astar->find(start_x, start_y, goal_x, goal_y));
+
+            // draw point from carrot_planner
+            t_point carrot_pt = carrot_planner(route);
+            int pt_x = (std::get<0>(carrot_pt)+0.5) * render_width / map_safety.size().width;
+            int pt_y = (std::get<1>(carrot_pt)+0.5) * render_height / map_safety.size().height;
+            cv::Point carrot_pt_cv(pt_x, pt_y);
+            cv::circle(rendered_image, carrot_pt_cv, robot_radius*scale_factor/5, agent_colors[i], -1);
+
+            // transform path to cv array
+            int n_pts = route.size() + 1;
+            cv::Point points[n_pts];
+            points[0] = cv::Point(
+                (start_x+0.5) * render_width / map_safety.size().width,
+                (start_y+0.5) * render_height / map_safety.size().height);
+            for (int i=1; i < n_pts; i++)
+            {
+                int pt_x = (std::get<0>(route[i-1])+0.5) * render_width / map_safety.size().width;
+                int pt_y = (std::get<1>(route[i-1])+0.5) * render_height / map_safety.size().height;
+                points[i] = cv::Point(pt_x, pt_y);
+            }
+            const cv::Point* ps = points;
+            cv::polylines(rendered_image, &ps, &n_pts, 1, /*closed=*/false, agent_colors[i], 2);
+        }
     }
 
     // draw goals
@@ -576,7 +638,7 @@ cv::Mat Environment::get_rendered_pic()
         textSize.y = center.y + textSize.y / 2;
         cv::putText(rendered_image, std::to_string(i), textSize, font, scale, cv::Scalar(0, 0, 0), thickness);
 
-        if (draw_noisy_pose)
+        if (draw_noisy_pose or debug)
         {
             float noisy_pose_x = last_observation[i][0];
             float noisy_pose_y = last_observation[i][1];
@@ -588,7 +650,7 @@ cv::Mat Environment::get_rendered_pic()
         }
 
         // laser scans
-        if (draw_laser)
+        if (draw_laser or debug)
         {
             cv::Point pt_from, pt_to;
             pt_from.x = robot_radius * scale_factor * std::cos(-angle) + center.x;
@@ -606,10 +668,16 @@ cv::Mat Environment::get_rendered_pic()
     return rendered_image;
 }
 
-void Environment::render(int wait)
+void Environment::render(int wait, bool debug/*=false*/)
 {
-    cv::imshow("Multi-agent path finding environment", get_rendered_pic());
+    cv::imshow("Multi-agent path finding environment", get_rendered_pic(debug));
     cv::waitKey(wait);
+}
+
+t_point Environment::carrot_planner(const t_path route) const
+{
+    int idx = std::min<float>(route.size(), carrot_planner_dist);
+    return route[idx-1];
 }
 
 std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool>>
@@ -684,9 +752,28 @@ std::tuple<std::vector<float>, float> Environment::get_observation(int agent_ind
     std::get<0>(obs_and_reward).push_back(lin_vel + normal_dist(*generator));
     std::get<0>(obs_and_reward).push_back(ang_vel + normal_dist(*generator));
 
-    // goal pose
-    std::get<0>(obs_and_reward).push_back(goal_positions[agent_index].x);
-    std::get<0>(obs_and_reward).push_back(goal_positions[agent_index].y);
+    // subgoal pose and distance
+    b2Vec2 agent_pos = agent_bodies[agent_index]->GetPosition();
+    b2Vec2 goal_pos  = goal_positions[agent_index];
+
+    int start_x = agent_pos.x / safe_pix_width;
+    int start_y = map_safety.size().height - agent_pos.y / safe_pix_height;
+    int goal_x  = goal_pos.x / safe_pix_width;
+    int goal_y  = map_safety.size().height - goal_pos.y / safe_pix_height;
+
+    t_path route;
+    float dist;
+    std::tie(route, dist) = astar->find(start_x, start_y, goal_x, goal_y);
+
+    float carr_x, carr_y;
+    std::tie(carr_x, carr_y) = carrot_planner(route);
+
+    carr_x = (carr_x + 0.5) * safe_pix_width - agent_pos.x;
+    carr_y = std::get<1>(map_size) - (carr_y + 0.5) * safe_pix_height - agent_pos.y;
+
+    std::get<0>(obs_and_reward).push_back(carr_x);
+    std::get<0>(obs_and_reward).push_back(carr_y);
+    std::get<0>(obs_and_reward).push_back(dist);
 
     // scan
     std::get<0>(obs_and_reward).insert(std::get<0>(obs_and_reward).end(),
@@ -699,8 +786,7 @@ std::tuple<std::vector<float>, float> Environment::get_observation(int agent_ind
     else if (collisions[agent_index])
         reward = collision_reward;
 
-    float goal_distance = (position - goal_positions[agent_index]).Length();
-    reward += std::sqrt(goal_distance) * goal_distance_reward_mult;
+    reward += std::sqrt(dist) * goal_distance_reward_mult;
 
     std::get<1>(obs_and_reward) = reward;
 
@@ -724,7 +810,7 @@ float Environment::get_episode_sim_time() const
 
 std::vector<int> Environment::get_observation_space() const
 {
-    int single_obs_len = 7 + laser_nrays;
+    int single_obs_len = 8 + laser_nrays;
     std::vector<int> ret(number_of_agents);
     std::fill(ret.begin(), ret.end(), single_obs_len);
     return ret;

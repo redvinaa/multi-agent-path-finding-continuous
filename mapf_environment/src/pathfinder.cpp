@@ -27,7 +27,7 @@ AStar::AStar(cv::Mat _map, bool _diag, bool _init_all)
 
     if (init_all)
     {
-        auto time_start = std::chrono::high_resolution_clock::now();
+        // auto time_start = std::chrono::high_resolution_clock::now();
         int n_paths = 0;
 
         paths.resize(grid_map.size().width, grid_map.size().height,
@@ -58,19 +58,21 @@ AStar::AStar(cv::Mat _map, bool _diag, bool _init_all)
                 }
             }
         }
-        auto time_end  = std::chrono::high_resolution_clock::now();
-        auto time_diff = time_end - time_start;
-        float secs = static_cast<std::chrono::duration<float, std::milli>>(time_diff).count() / 1e3;
-        std::cout << "Global path planning calculated " << n_paths << " paths, in " <<
-            secs << " s" << std::endl;
+        // auto time_end  = std::chrono::high_resolution_clock::now();
+        // auto time_diff = time_end - time_start;
+        // float secs = static_cast<std::chrono::duration<float, std::milli>>(time_diff).count() / 1e3;
+        // std::cout << "Global path planning calculated " << n_paths << " paths, in " <<
+        //     secs << " s" << std::endl;
     }
 }
 
 std::tuple<t_path, float> AStar::find(int start_x, int start_y, int goal_x, int goal_y) const
 {
-    assert(not ((start_x == goal_x) and (start_y == goal_y)));
-    assert(not (static_cast<int>(grid_map.at<unsigned char>(start_y, start_x)) < 255/2));
-    assert(not (static_cast<int>(grid_map.at<unsigned char>(goal_y, goal_x)) < 255/2));
+    assert(static_cast<int>(grid_map.at<unsigned char>(start_y, start_x)) > 255/2);
+    assert(static_cast<int>(grid_map.at<unsigned char>(goal_y, goal_x)) > 255/2);
+
+    if (((start_x == goal_x) and (start_y == goal_y)))
+        return std::make_tuple(t_path(), 0.);
 
     if (init_all)
         return paths(start_x, start_y, goal_x, goal_y);

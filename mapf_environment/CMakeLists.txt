@@ -32,7 +32,7 @@ catkin_package(
 
 
 # add library
-add_library(${PROJECT_NAME}_lib src/environment.cpp src/raycast_callback.cpp)
+add_library(${PROJECT_NAME}_lib src/environment.cpp src/raycast_callback.cpp src/pathfinder.cpp)
 target_link_libraries(${PROJECT_NAME}_lib PUBLIC ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES})
 
 add_executable(${PROJECT_NAME}_node src/ros_wrapper_node.cpp src/environment_wrapper.cpp)

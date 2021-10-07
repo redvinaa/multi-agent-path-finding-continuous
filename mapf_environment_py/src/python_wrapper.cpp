@@ -28,7 +28,7 @@ PYBIND11_MODULE(mapf_env, m)
     .def("step",         &Environment::step,
         "Add actions, get observations, rewards and done", py::arg("action"), py::arg("render") = false)
     .def("render",       &Environment::render,
-        "Show rendered image of the environment", py::arg("wait") = 0)
+        "Show rendered image of the environment", py::arg("wait") = 0, py::arg("debug") = false)
     .def("is_done",      &Environment::is_done,
         "Is the episode over")
     .def("get_number_of_agents", &Environment::get_number_of_agents,

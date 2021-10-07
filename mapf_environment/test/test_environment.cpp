@@ -23,7 +23,7 @@ class EnvironmentFixture : public testing::Test
             std::string pkg_path = ros::package::getPath("mapf_environment");
             std::string image_path = pkg_path + "/maps/test_4x4.jpg";
             environment =
-                new Environment(image_path, std::make_tuple(4., 4.), 1, 1, 30, 0.5);
+                new Environment(image_path, std::make_tuple(4., 4.), 1, std::rand(), 30, 0.5);
         }
 
         void TearDown() override
@@ -208,21 +208,21 @@ TEST_F(EnvironmentFixture, testObservation)
 TEST_F(EnvironmentFixture, testRender)
 {
     std::default_random_engine generator;
-    std::normal_distribution<float> dist(0.9, 0.1);
+    std::uniform_real_distribution<float> dist(0., 1.);
 
     auto obs = environment->reset();
 
-    std::vector<std::vector<float>> actions(2);
+    std::vector<std::vector<float>> actions(1);
 
-    while (!environment->is_done())
+    while (not environment->is_done())
     {
-        environment->render(10);
+        environment->render(0, true);
 
         for (auto& a : actions)
         {
             a.resize(2);
-            a[0] = std::min(static_cast<double>(dist(generator)), 1.);
-            a[1] = std::min(static_cast<double>(dist(generator)), M_PI/2);
+            a[0] = dist(generator);
+            a[1] = (dist(generator) - 0.5) * M_PI;
         }
 
         environment->step(actions);
@@ -317,7 +317,8 @@ TEST(AStar, testAStar)
 
 int main(int argc, char **argv)
 {
+    std::srand(time(0));
     testing::InitGoogleTest(&argc, argv);
-    testing::GTEST_FLAG(filter) = "AStar.testAStar";
+    testing::GTEST_FLAG(filter) = "EnvironmentFixture.testRender";
     return RUN_ALL_TESTS();
 }

@@ -14,6 +14,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <gtest/gtest.h>
+#include "mapf_environment/pathfinder.h"
 
 
 /*! \brief Environment for multi-agent path finding simulation
@@ -40,27 +41,29 @@ class Environment
         std::vector<cv::Scalar> agent_colors;
         std::vector<std::vector<float>> current_actions, laser_scans, last_observation;
         std::vector<bool> collisions;
-        std::vector<std::tuple<float, float>> obstacle_positions;
+        std::vector<t_point> obstacle_positions;
         std::tuple<float, float> map_size;  // width, height
         std::vector<int> map_indices;
-        bool draw_laser, draw_noisy_pose, done;
+        bool draw_laser, draw_noisy_pose, draw_global_path, done;
         float block_size, scale_factor, laser_max_angle, laser_max_dist,
             robot_diam, robot_radius, goal_reaching_reward, collision_reward,
             goal_distance_reward_mult, episode_sim_time, noise, obstacle_width,
-            obstacle_height;
+            obstacle_height, safe_pix_width, safe_pix_height;
         std::string map_path;
-        int render_height, laser_nrays, step_multiply, number_of_agents,
-            max_steps, current_steps, resolution_per_pix;
+        int render_height, render_width, laser_nrays, step_multiply, number_of_agents,
+            max_steps, current_steps, resolution_per_pix, carrot_planner_dist;
         unsigned int seed;
         cv::Mat map_image_raw, map_image, rendered_image, map_safety;
         cv::Scalar color;
+        std::shared_ptr<AStar> astar;
 
+        // random
         std::shared_ptr<std::default_random_engine> generator;
         std::normal_distribution<float> normal_dist;
         std::uniform_real_distribution<float> uniform_dist;
 
         /*! \brief Calculate position from pixel on a map */
-        std::tuple<float, float> pix_to_pos(int col, int row, cv::Size image_size) const;
+        t_point pix_to_pos(const int col, const int row, const cv::Size image_size) const;
 
         /*! \brief Load map
          *
@@ -135,10 +138,11 @@ class Environment
         /*! \brief Calculate the observations for the given agent
          *
          * The observations contained in the vector are the following, respectively:
-         *   - agent_pose:  linear x, y, and angle z
-         *   - agent_twist: linear x, and angular z
-         *   - goal_pose:   linear x, y only
-         *   - scan:        vector of ranges
+         *   - agent_pose:       linear x, y, and angle z
+         *   - agent_twist:      linear x, and angular z
+         *   - subgoal_pose:     linear x, y only (carrot planner, relative)
+         *   - global_goal_dist: as given by the A* planner
+         *   - scan:             vector of ranges
          *
          * Rewards are calculated based on the reached_goal argument.
          *
@@ -146,6 +150,10 @@ class Environment
          * \return Tuple of the calculated observation vector and the reward
          */
         std::tuple<std::vector<float>, float> get_observation(int agent_index, bool reached_goal);
+
+        /*! \brief Gets the i-th point on the path of the agent
+         *  as set in the variable carrot_planner_dist */
+        t_point carrot_planner(const t_path route) const;
 
         FRIEND_TEST(EnvironmentCore,    constructorRuns);
         FRIEND_TEST(EnvironmentFixture, testConstructor);
@@ -157,6 +165,7 @@ class Environment
         FRIEND_TEST(EnvironmentFixture, testMovement);
         FRIEND_TEST(EnvironmentFixture, testObservation);
         FRIEND_TEST(EnvironmentFixture, testSerialize);
+        FRIEND_TEST(EnvironmentFixture, testPathFinder);
         FRIEND_TEST(CriticFixture,      testGetValues);
         FRIEND_TEST(CriticFixture,      testTraining);
 
@@ -175,15 +184,15 @@ class Environment
          * \sa init_map(), init_physics()
          */
         Environment(
-            std::string              _map_path,
-            std::tuple<float, float> _map_size,
-            int                      _number_of_agents  = 2,
-            unsigned int             _seed              = 0,
-            int                      _max_steps         = 30,
-            float                    _robot_diam        = 0.8,
-            float                    _noise             = 0.00,
-            float                    _physics_step_size = 0.1,
-            int                      _step_multiply     = 10);
+            std::string  _map_path,
+            t_point      _map_size,
+            int          _number_of_agents  = 2,
+            unsigned int _seed              = 0,
+            int          _max_steps         = 30,
+            float        _robot_diam        = 0.8,
+            float        _noise             = 0.00,
+            float        _physics_step_size = 0.1,
+            int          _step_multiply     = 10);
 
         /*! \brief Set done=false, generate new starting positions and goals for all agents
          * \return First observation
@@ -195,14 +204,15 @@ class Environment
          *
          * \return The drawn image
          */
-        cv::Mat get_rendered_pic();
+        cv::Mat get_rendered_pic(bool debug=false);
 
         /*! \brief Show rendered image of the environment
          *
+         * \param debug Show everything on image
          * \param wait Passed to cv::waitKey (timeout in ms)
          * \sa get_rendered_pic
          */
-        void render(int wait = 0);
+        void render(int wait = 0, bool debug=false);
 
         /* \brief Add actions, get observations, rewards and dones
          *
