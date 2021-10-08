@@ -6,24 +6,6 @@ from multiprocessing import Process, Pipe
 from copy import deepcopy
 
 
-## Maps actions from (-1, 1) to env defined range
-#
-#  Input actions [[-1, 1], [-1, 1]]
-#  are mapped to [[0, 1],  [-pi/2, pi/2]]
-class UnitActionsEnv(Environment):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def step(self, actions: Union[List[List[float]], np.ndarray], render: bool):
-        # max linear speed is 1 m/s
-        # max angular speed is pi/2 rad/s
-        actions = np.array(actions)
-        actions[:, 0] = (actions[:, 0] + 1) / 2
-        actions[:, 1] *= np.pi/2
-
-        return super().step(actions, render)
-
-
 ## Creates multiple environments parallelly
 #
 #  @param config Environment configuration
@@ -31,9 +13,12 @@ class ParallelEnv:
     def __piped_env(pipe: mp.connection.Connection,
             config: dict) -> type(None):
 
-        env = UnitActionsEnv(
-            config['map_image'],
-            config['n_agents'])
+        env = Environment(
+            map_path         = config['map_image'],
+            map_size         = tuple(config['map_size']),
+            number_of_agents = config['n_agents'],
+            seed             = config['seed'],
+            robot_diam       = config['robot_diam'])
 
         while True:
             cmd, data = pipe.recv()

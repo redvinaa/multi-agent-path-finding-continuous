@@ -66,7 +66,6 @@ class MASAC:
         self.critic2_optim = torch.optim.Adam(self.critic.Q2.parameters())
 
         if self.auto_entropy:
-            # TODO(redvinaa): Not sure if target_entropy is right
             self.target_entropy = \
                 -torch.tensor([self.n_agents * self.act_size]).to(self.device).item()
             self.log_alpha      = \

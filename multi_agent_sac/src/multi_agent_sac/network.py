@@ -116,7 +116,7 @@ class DoubleQNetwork(nn.Module):
         return vals_q1, vals_q2
 
 
-## Policy for use in the UnitActionsEnv
+## Unit actions policy for the SAC algorithm
 class TanhGaussianPolicy(nn.Module):
     LOG_STD_MIN: float=-20.
     LOG_STD_MAX: float=2.

@@ -685,16 +685,11 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool
 {
     assert(actions.size() == number_of_agents);
     for (auto act : actions)
-    {
         assert(act.size() == 2);
-        assert(act[0] >= 0.);
-    }
 
     // process actions
     for (int i=0; i < number_of_agents; i++)
-    {
         process_action(i, actions[i]);
-    }
 
     std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool>> ret;
     std::get<0>(ret).resize(number_of_agents);
@@ -723,8 +718,11 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool
 void Environment::process_action(int agent_index, std::vector<float> action)
 {
     assert(action.size() == 2);
-    assert(std::abs(action[0]) < 1.     + 1e-3);  // max 1 m/s
-    assert(std::abs(action[1]) < M_PI/2 + 1e-3);  // max 90 deg/s
+    // speeds are not meant to be restricted here,
+    // this is just for making sure that the
+    // input values are realistic
+    assert(std::abs(action[0]) < 10.     + 1e-3);  // max 10 m/s
+    assert(std::abs(action[1]) < M_PI*2  + 1e-3);  // max 360 deg/s
 
     current_actions[agent_index] = action;
 }

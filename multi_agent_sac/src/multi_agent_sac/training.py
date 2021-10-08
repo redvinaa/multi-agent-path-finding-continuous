@@ -8,6 +8,8 @@ from tensorboardX import SummaryWriter
 from algorithm import MASAC
 from buffer import ReplayBuffer
 from env_wrapper import ParallelEnv
+from mapf_env import Environment
+from misc import from_unit_actions, to_unit_actions
 from rospkg import RosPack
 import warnings
 import json
@@ -52,28 +54,38 @@ class TrainProcess:
 
 
     def __evaluation_episode(self) -> type(None):
-        log_actions = np.empty((self.c['n_threads'], self.c['episode_length'], \
-            self.c['n_agents'], self.env.act_size))
+        log_actions = np.empty((self.c['episode_length'], self.c['n_agents'], self.env.act_size))
         log_rewards = np.zeros((self.c['n_agents']))
 
-        obs_v = self.env.reset()
+        env = Environment(
+            map_path         = self.c['map_image'],
+            map_size         = tuple(self.c['map_size']),
+            number_of_agents = self.c['n_agents'],
+            seed             = self.c['seed'],
+            robot_diam       = self.c['robot_diam'])
+
+        obs = env.reset()
+        obs = np.array(obs)
 
         for step in range(self.c['episode_length']):
-            act_v = np.stack([self.model.step(obs, explore=False) for obs in obs_v])
+            act = self.model.step(obs, explore=False)
 
-            next_obs_v, rewards_v, dones_v = self.env.step(act_v)
+            #  env.render(0, True)
 
-            obs_v = next_obs_v
+            next_obs, rewards, dones = env.step(
+                from_unit_actions(act, self.c['max_linear_speed'], self.c['max_angular_speed']))
 
-            log_actions[:, step] = act_v
-            log_rewards += np.average(rewards_v, axis=0) # average between parallel envs
+            obs = next_obs
+            obs = np.array(obs)
 
-        log_actions = np.average(log_actions, axis=0)
+            log_actions[step] = act
+            log_rewards += rewards
+
         data = {}
         for i, rew in enumerate(log_rewards):
             data.update({f'agent_{i}': rew})
 
-        self.logger.add_scalars('evaluation/episode_reward',    data,                           self.ep)
+        self.logger.add_scalars('evaluation/episode_reward',    data, self.ep)
         self.logger.add_histogram('evaluation/linear_actions', \
             log_actions[:,:,0].flatten(), self.ep)
         self.logger.add_histogram('evaluation/angular_actions', \
@@ -94,7 +106,8 @@ class TrainProcess:
             else:
                 act_v = np.stack([self.model.step(obs, explore=True) for obs in obs_v])
 
-            next_obs_v, rewards_v, dones_v = self.env.step(act_v)
+            next_obs_v, rewards_v, dones_v = self.env.step(
+                from_unit_actions(act_v, self.c['max_linear_speed'], self.c['max_angular_speed']))
 
             for obs, act, rewards, next_obs, dones in zip(obs_v, act_v, rewards_v, next_obs_v, dones_v):
                 self.buffer.push(obs, act, rewards, next_obs, dones)

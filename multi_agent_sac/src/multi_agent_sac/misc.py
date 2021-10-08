@@ -1,3 +1,6 @@
+import numpy as np
+
+
 ## Exponentially step network weight torwards target
 #
 #  target = (1-tau) * target + tau * source, tau==1 performs hard update
@@ -22,3 +25,38 @@ def update_params(optim, loss):
     optim.zero_grad()
     loss.backward()
     optim.step()
+
+
+## Convert normalized actions to environment scale
+def from_unit_actions(act: np.ndarray, max_linear_speed: float, max_angular_speed: float):
+    dim = act.ndim
+
+    if dim == 2:  # act.shape=(n_agents, act_size)
+        act[:, 0] *= max_linear_speed   # linear
+        act[:, 1] *= max_angular_speed  # angular
+
+    elif dim == 3:  # act.shape=(n_sample, n_agents, act_size)
+        act[:, :, 0] *= max_linear_speed   # linear
+        act[:, :, 1] *= max_angular_speed  # angular
+
+    else:
+        raise NotImplementedError
+
+    return act
+
+## Convert environment scale actions to normalized ones
+def to_unit_actions(act: np.ndarray, max_linear_speed: float, max_angular_speed: float):
+    dim = act.ndim
+
+    if dim == 2:  # act.shape=(n_agents, act_size)
+        act[:, 0] /= max_linear_speed   # linear
+        act[:, 1] /= max_angular_speed  # angular
+
+    elif dim == 3:  # act.shape=(n_sample, n_agents, act_size)
+        act[:, :, 0] /= max_linear_speed   # linear
+        act[:, :, 1] /= max_angular_speed  # angular
+
+    else:
+        raise NotImplementedError
+
+    return act
