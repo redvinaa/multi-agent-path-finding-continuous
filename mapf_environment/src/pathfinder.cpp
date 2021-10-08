@@ -50,8 +50,20 @@ AStar::AStar(cv::Mat _map, bool _diag, bool _init_all)
                         if (static_cast<int>(grid_map.at<unsigned char>(goal_y, goal_x)) < 255/2)
                             continue;
 
-                        paths(start_x, start_y, goal_x, goal_y)
-                            = find_path(start_x, start_y, goal_x, goal_y);
+                        // check if path has already been calculated in the other direction
+                        t_path route;
+                        float dist;
+                        std::tie(route, dist) = paths(goal_x, goal_y, start_x, start_y);
+                        if (route.size() > 0)
+                        {
+                            std::reverse(route.begin(), route.end());
+                            paths(start_x, start_y, goal_x, goal_y) =
+                                std::make_tuple(route, dist);
+                        }
+                        else
+                            // calculate route
+                            paths(start_x, start_y, goal_x, goal_y)
+                                = find_path(start_x, start_y, goal_x, goal_y);
 
                         n_paths++;
                     }

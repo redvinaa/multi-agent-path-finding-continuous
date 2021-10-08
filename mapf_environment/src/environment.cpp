@@ -53,7 +53,7 @@ Environment::Environment(
     laser_nrays               = 10;
     draw_laser                = false;
     draw_noisy_pose           = false;
-    draw_global_path          = true;
+    draw_global_path          = false;
     goal_reaching_reward      = 1.;
     collision_reward          = -0.5;
     goal_distance_reward_mult = -0.05;
