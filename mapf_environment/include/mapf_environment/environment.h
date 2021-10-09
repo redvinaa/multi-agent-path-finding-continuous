@@ -44,7 +44,8 @@ class Environment
         std::vector<t_point> obstacle_positions;
         std::tuple<float, float> map_size;  // width, height
         std::vector<int> map_indices;
-        bool draw_laser, draw_noisy_pose, draw_global_path, done;
+        bool draw_laser, draw_noisy_pose, draw_global_path,
+            draw_safety_map, draw_actions, done;
         float block_size, scale_factor, laser_max_angle, laser_max_dist,
             robot_diam, robot_radius, goal_reaching_reward, collision_reward,
             goal_distance_reward_mult, episode_sim_time, noise, obstacle_width,

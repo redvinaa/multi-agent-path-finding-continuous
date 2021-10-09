@@ -517,7 +517,8 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::ste
 cv::Mat Environment::get_rendered_pic(bool debug/*=false*/)
 {
     assert(not done);
-    if (debug)
+
+    if (draw_safety_map or debug)
     {
         map_safety.copyTo(rendered_image);
         cv::cvtColor(map_safety, rendered_image, cv::COLOR_GRAY2BGR);
@@ -665,6 +666,52 @@ cv::Mat Environment::get_rendered_pic(bool debug/*=false*/)
                 pt_to.x = laser_scans[i][j] * scale_factor * std::cos(-laser_angle) + pt_from.x;
                 pt_to.y = laser_scans[i][j] * scale_factor * std::sin(-laser_angle) + pt_from.y;
                 cv::line(rendered_image, pt_from, pt_to, cv::Scalar(125, 125, 125));
+            }
+        }
+
+        // draw actions
+        if (draw_actions or debug)
+        {
+            std::vector<float> act = current_actions[i];
+            float act_l = act[0];
+            float act_a = act[1];
+
+            if (act_l != 0.)
+            {
+
+                if (act_a == 0.)  // not turning
+                {
+                    int len = robot_diam * scale_factor;  // length of trajectory
+                    cv::Point pt_to(len*std::cos(-angle) + center.x, len*std::sin(-angle) + center.y);
+                    cv::arrowedLine(rendered_image, center, pt_to, cv::Scalar(0, 0, 255));
+                }
+                else
+                {
+                    int n_pts = 10;
+                    float total_angle = M_PI/4.;
+                    cv::Point pts[n_pts];
+
+                    pts[0] = center;
+                    float turn_angle = total_angle / (n_pts-1);
+                    const float R = act_l / std::abs(act_a);
+                    const int len = R * scale_factor * 2 * M_PI * total_angle / (2 * M_PI);
+
+                    for (int i=1; i < n_pts; i++)
+                    {
+                        float alpha;
+                        if (act_a > 0.)
+                            alpha = angle + turn_angle * i;
+                        else
+                            alpha = angle - turn_angle * i;
+                        cv::Point pt = pts[i-1];  // start out from previous pt
+                        pt.x += std::cos(alpha) * len;
+                        pt.y -= std::sin(alpha) * len;
+                        pts[i] = pt;
+                    }
+
+                    const cv::Point* const_pts[1] = {pts};
+                    cv::polylines(rendered_image, const_pts, &n_pts, 1, false, cv::Scalar(0, 0, 255));
+                }
             }
         }
     }
