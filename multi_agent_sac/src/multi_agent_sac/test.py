@@ -4,68 +4,83 @@ import argparse
 import torch
 import os
 import numpy as np
-from tensorboardX import SummaryWriter
-from agent import Agent
+from multi_agent_sac.network import TestAgent
+from mapf_env import Environment
 from rospkg import RosPack
-import rospy
-from std_msgs.msg import Float32MultiArray
-from geometry_msgs.msg import Twist
+import json
 
 
-class MASACRos:
-    def __init__(self, config):
-        self.config = config
+class TestMASACRos:
+    def __init__(self, config: dict):
 
-        # load
+        # load config
         pkg_path = RosPack().get_path('multi_agent_sac')
-        model_dir = os.path.join(pkg_path, 'runs', config.run_name, 'models')
-        agent_weights_file = os.path.join(model_dir, 'agent.p')
+        self.run_dir   = os.path.join(pkg_path, 'runs', config['run_name'])
+        self.model_dir = os.path.join(self.run_dir, f'run_{config["run_index"]}', 'models')
+        self.log_dir   = os.path.join(self.run_dir, f'run_{config["run_index"]}', 'logs')
 
-        self.agent = Agent()
-        self.agent.load(agent_weights_file)
+        with open(os.path.join(self.run_dir, 'config.json'), 'r') as f:
+            self.c = json.load(f)
 
-        self.obs_subscribers = []
-        self.act_publishers  = []
+            # seed from config file
+            torch.manual_seed(self.c['seed'])
+            np.random.seed(self.c['seed'])
 
-        for i in range(config.n_agents):
-            agent_obs_cb = lambda obs: self.obs_callback(i, obs)
-            sub = rospy.Subscriber(f'agent_{i}/observation', Float32MultiArray,
-                agent_obs_cb, queue_size=1)
-            self.obs_subscribers.append(sub)
+            self.c.update(config)
 
-            pub = rospy.Publisher(f'agent_{i}/cmd_vel', Twist, queue_size=1)
-            self.act_publishers.append(pub)
+        # create env
+        maps_dir_path = os.path.join(RosPack().get_path('mapf_environment'), 'maps')
+        image = os.path.join(maps_dir_path, self.c['map_image'] + '.jpg')
+        self.env = Environment(
+            map_path          = image,
+            map_size          = tuple(self.c['map_size']),
+            number_of_agents  = self.c['n_agents'],
+            seed              = self.c['seed'],
+            robot_diam        = self.c['robot_diam'],
+            noise             = 0.,
+            physics_step_size = 0.05,
+            step_multiply     = 1,
+            max_steps         = 9999)
 
+        # create agent
+        agent_weights_file = os.path.join(self.model_dir, 'agent.p')
+        self.agent = TestAgent(
+            self.env.get_observation_space()[0],
+            self.env.get_action_space()[0],
+            [self.c['actor_hidden_dim']])
 
-    def obs_callback(self, agent_index, obs):
-        act = self.agent.step(obs, expore=False)
+        # load weights
+        actor_model_file  = os.path.join(self.model_dir, 'agent.p')
+        self.agent.load(actor_model_file)
 
-        act_ros = Twist()
-        act_ros.linear.x  = act[0]
-        act_ros.angular.z = act[1]
-        self.act_publishers[agent_index].publish(act_ros)
+    def run(self) -> type(None):
+        done = False
+        obs  = self.env.reset()
+        obs  = np.array(obs)
+
+        while not done:
+            # get actions
+            act = np.stack([self.agent.step(o) for o in obs])
+            act[:, 0] *= self.c['max_linear_speed']
+            act[:, 1] *= self.c['max_angular_speed']
+
+            # render
+            self.env.render(50, True)
+
+            # step
+            obs, _, dones = self.env.step(act)
+            obs = np.array(obs)
+            done = np.any(dones)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--run_name',          default='test',      type=str)
-    parser.add_argument('--map_image',         default='empty_4x4', type=str)
-    parser.add_argument('--buffer_length',     default=int(1e6),    type=int)
-    parser.add_argument('--n_episodes',        default=50000,       type=int)
-    parser.add_argument('--n_agents',          default=2,           type=int)
-    parser.add_argument('--episode_length',    default=25,          type=int)
-    parser.add_argument('--steps_per_update',  default=100,         type=int)
-    parser.add_argument('--num_updates',       default=4,           type=int)
-    parser.add_argument('--batch_size',        default=1024,        type=int)
-    parser.add_argument('--save_interval',     default=1000,        type=int)
-    parser.add_argument('--actor_hidden_dim',  default=128,         type=int)
-    parser.add_argument('--critic_hidden_dim', default=128,         type=int)
-    parser.add_argument('--seed',              default=0,           type=int)
-    parser.add_argument('--tau',               default=0.001,       type=float)
-    parser.add_argument('--gamma',             default=0.99,        type=float)
-    parser.add_argument('--alpha',             default=0.99,        type=float)
+    parser.add_argument('run_name',  default='test', nargs='?', type=str,
+        help='Name of the run to load')
+    parser.add_argument('run_index', default=0,      nargs='?', type=int,
+        help='Index of the run to load')
+    parser.add_argument('--seed',    default=0,                 type=int)
 
     config = parser.parse_args()
-    rospy.init_node('multi_agent_sac')
-    MASACRos(config)
-    rospy.spin()
+    test = TestMASACRos(vars(config))
+    test.run()

@@ -187,3 +187,38 @@ class TanhGaussianPolicy(nn.Module):
         entropies = -log_probs.sum(dim=-1, keepdim=False) # sum in actions dim
 
         return act_sampled_tanh, entropies, torch.tanh(means)
+
+
+## Class to use only policy weights, without training
+class TestAgent(nn.Module):
+    def __init__(self, obs_size: int, act_size: int, hidden_layers: List[int]):
+        super(TestAgent, self).__init__()
+        self.obs_size      = obs_size
+        self.act_size      = act_size
+        self.hidden_layers = hidden_layers
+
+        self.input_size  = obs_size
+        self.output_size = 2 * act_size
+        self.policy = LinearNetwork(self.input_size, \
+            self.output_size, hidden_layers)
+
+
+    def forward(self, obs: torch.Tensor) -> torch.Tensor:
+        return self.policy(obs).detach()
+
+
+    ## Return action to given observation (for one agent)
+    #
+    # @return Action from the policy (without exploration)
+    def step(self, obs: np.ndarray) -> np.ndarray:
+        assert(obs.shape == (self.obs_size,))
+        obs = torch.from_numpy(obs.astype(np.float32)).unsqueeze(0)
+        means, _ = torch.chunk(self.forward(obs), 2, dim=-1)
+        means = means.squeeze(0)
+        means = torch.tanh(means)
+        return means.numpy()
+
+
+    ## Load weights from file
+    def load(self, file: str) -> type(None):
+        self.load_state_dict(torch.load(file))
