@@ -103,8 +103,6 @@ class DoubleQNetwork(nn.Module):
             ## cat-ed obs and act of the i-th agent (first sample) << this works
             #  a = obs_act[0, :(self.obs_size+self.act_size)]
             #  b = torch.cat((obs[0,i], act[0,i]), dim=0)
-            #  print(f'a = {a}')
-            #  print(f'b = {b}')
             #  assert((a == b).all())
 
             q1 = self.Q1(obs_act) # shape=(N, 1)
@@ -215,8 +213,8 @@ class TestAgent(nn.Module):
         obs = torch.from_numpy(obs.astype(np.float32)).unsqueeze(0)
         means, _ = torch.chunk(self.forward(obs), 2, dim=-1)
         means = means.squeeze(0)
-        means = torch.tanh(means)
-        return means.numpy()
+        means_tanh = torch.tanh(means)
+        return means_tanh.numpy()
 
 
     ## Load weights from file

@@ -1,6 +1,6 @@
-n_runs: 2
-n_threads: 4
-map_image: test_4x4
+n_runs: 1
+n_threads: 10
+map_image: test1_4x4
 map_size: [4, 4]
 robot_diam: 0.7
 buffer_length: 10000
@@ -17,6 +17,7 @@ seed: 0
 tau: 0.99
 gamma: 0.95
 auto_entropy: true
+min_linear_speed: 0.
 max_linear_speed: 2.
 max_angular_speed: 3.14
 device: cpu

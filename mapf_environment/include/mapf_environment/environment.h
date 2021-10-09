@@ -34,7 +34,7 @@ class Environment
         std::vector<b2Vec2> goal_positions;
 
         // physics properties
-        double physics_step_size;
+        float physics_step_size;
         int32 velocity_iterations, position_iterations;
 
         // other fields
@@ -138,11 +138,11 @@ class Environment
         /*! \brief Calculate the observations for the given agent
          *
          * The observations contained in the vector are the following, respectively:
-         *   - agent_pose:       linear x, y, and angle z
-         *   - agent_twist:      linear x, and angular z
-         *   - subgoal_pose:     linear x, y only (carrot planner, relative)
-         *   - global_goal_dist: as given by the A* planner
-         *   - scan:             vector of ranges
+         *   - agent_pose:                vector of linear x, y, and angle z
+         *   - prev_action:               vector of linear x, and angular z (memory)
+         *   - direction to subgoal_pose: scalar
+         *   - distance to goal:          scalar, for the value function
+         *   - scan:                      vector of ranges
          *
          * Rewards are calculated based on the reached_goal argument.
          *
@@ -172,6 +172,8 @@ class Environment
     public:
         /*! \brief Sets the default parameters, and calls init_map() and init_physics()
          *
+         *  One step takes 0.5 s in sim time, and one ep is 30 s.
+         *
          * \param _map_path Map image to load
          * \param _map_size  Real-life size of the area, in meters, width, height
          * \param _number_of_agents Set number of agents to generate
@@ -188,11 +190,11 @@ class Environment
             t_point      _map_size,
             int          _number_of_agents  = 2,
             unsigned int _seed              = 0,
-            int          _max_steps         = 30,
-            float        _robot_diam        = 0.8,
+            int          _max_steps         = 60,
+            float        _robot_diam        = 0.7,
             float        _noise             = 0.00,
             float        _physics_step_size = 0.1,
-            int          _step_multiply     = 10);
+            int          _step_multiply     = 5);
 
         /*! \brief Set done=false, generate new starting positions and goals for all agents
          * \return First observation

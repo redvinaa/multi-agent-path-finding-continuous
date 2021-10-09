@@ -17,11 +17,11 @@ PYBIND11_MODULE(mapf_env, m)
         py::arg("map_size"),
         py::arg("number_of_agents")          = 2,
         py::arg("seed")                      = 0,
-        py::arg("max_steps")                 = 30,
-        py::arg("robot_diam")                = 0.8,
-        py::arg("noise")                     = 0.01,
+        py::arg("max_steps")                 = 60,
+        py::arg("robot_diam")                = 0.7,
+        py::arg("noise")                     = 0.00,
         py::arg("physics_step_size")         = 0.1,
-        py::arg("step_multiply")             = 10
+        py::arg("step_multiply")             = 5
         )
     .def("reset",        &Environment::reset,
         "Set done=false, generate new starting positions and goals for all agents")

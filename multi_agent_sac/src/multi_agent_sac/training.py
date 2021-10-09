@@ -70,10 +70,8 @@ class TrainProcess:
         for step in range(self.c['episode_length']):
             act = self.model.step(obs, explore=False)
 
-            #  env.render(0, True)
-
             next_obs, rewards, dones = env.step(
-                from_unit_actions(act, self.c['max_linear_speed'], self.c['max_angular_speed']))
+                from_unit_actions(act, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
 
             obs = next_obs
             obs = np.array(obs)
@@ -81,9 +79,10 @@ class TrainProcess:
             log_actions[step] = act
             log_rewards += rewards
 
-        data = {}
+        data = {'average': np.average(log_rewards)}
         for i, rew in enumerate(log_rewards):
             data.update({f'agent_{i}': rew})
+
 
         self.logger.add_scalars('evaluation/episode_reward',    data, self.ep)
         self.logger.add_histogram('evaluation/linear_actions', \
@@ -107,7 +106,7 @@ class TrainProcess:
                 act_v = np.stack([self.model.step(obs, explore=True) for obs in obs_v])
 
             next_obs_v, rewards_v, dones_v = self.env.step(
-                from_unit_actions(act_v, self.c['max_linear_speed'], self.c['max_angular_speed']))
+                from_unit_actions(act_v, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
 
             for obs, act, rewards, next_obs, dones in zip(obs_v, act_v, rewards_v, next_obs_v, dones_v):
                 self.buffer.push(obs, act, rewards, next_obs, dones)
@@ -117,7 +116,7 @@ class TrainProcess:
                 (step % self.c['steps_per_update']) == 0):
 
                 sample = self.buffer.sample(self.c['batch_size'])
-                l_critic1, l_critic2, l_entropy, l_policy = \
+                l_critic1, l_critic2, l_policy, l_entropy = \
                     self.model.update(sample)
 
                 losses['critic1'] += l_critic1
@@ -143,10 +142,8 @@ class TrainProcess:
                 self.logger.add_scalar('evaluation/alpha', self.model.alpha, self.ep)
 
 
-## Runs multiple training sessions in parallel with different seeds
-def parallel_train_MASAC(config: dict) -> type(None):
-    #  mp.set_start_method('spawn')
-
+## Runs multiple training sessions with different seeds
+def train_MASAC(config: dict) -> type(None):
     config = config.copy()
 
     pkg_path = RosPack().get_path('multi_agent_sac')
@@ -171,7 +168,7 @@ def parallel_train_MASAC(config: dict) -> type(None):
     image = os.path.join(maps_dir_path, config['map_image'] + '.jpg')
     config.update({'map_image': image})
 
-    print(f'Running {config["n_runs"]} parallel trainers')
+    print(f'Running {config["n_runs"]} sequential trainers')
 
     log_dir = os.path.join(runs_dir, 'run_*', 'logs')
     config.update({'log_dir': log_dir})
@@ -237,4 +234,4 @@ if __name__ == '__main__':
         # disable no NVIDIA driver warning
         warnings.filterwarnings("ignore", category=UserWarning)
 
-    parallel_train_MASAC(config)
+    train_MASAC(config)

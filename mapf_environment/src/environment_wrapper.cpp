@@ -33,9 +33,9 @@ RosEnvironment::RosEnvironment(ros::NodeHandle _nh):
     int number_of_agents;
 
     // read parameters
-    nh.param<std::string>("map_path",     map_path,          "empty_4x4");
+    nh.param<std::string>("map_path",     map_path,          "test_4x4");
     nh.param<int>("number_of_agents",     number_of_agents,  2);
-    nh.param<double>("robot_diam",        robot_diam,        0.8);
+    nh.param<double>("robot_diam",        robot_diam,        0.7);
 
     std::string full_map_path = ros::package::getPath("mapf_environment") + "/maps/" + map_path + ".jpg";
 
@@ -44,15 +44,15 @@ RosEnvironment::RosEnvironment(ros::NodeHandle _nh):
         std::make_tuple(4, 4),
         number_of_agents,
         0,  // seed
-        0,  // max_steps
+        99999,  // max_steps
         robot_diam,
         0.,  // noise
-        0.01,  // physics_step_size
-        4);  // step_multiply
+        0.05,  // physics_step_size
+        1);  // step_multiply
 
     // initialize ros communication
     render_publisher     = it.advertise("image", 1);
-    physics_timer = nh.createTimer(ros::Duration(0.01), &RosEnvironment::step, this);
+    physics_timer = nh.createTimer(ros::Duration(0.05), &RosEnvironment::step, this);
 
     coll_action.resize(env->get_number_of_agents());
     for (auto& act : coll_action)
@@ -81,25 +81,35 @@ void RosEnvironment::step(const ros::TimerEvent&)
         env->reset();
     }
 
+    cv_bridge::CvImage cv_img;
+    cv_img.header.stamp = ros::Time::now();
+    cv_img.encoding = "bgr8";
+    cv_img.image = env->get_rendered_pic(true);
+    render_publisher.publish(cv_img.toImageMsg());
+
     std::cout << "====================" << std::endl;
-    std::cout << "Sim time: " << env->get_episode_sim_time() << std::endl;
+    std::cout << "Sim time:\n  " << env->get_episode_sim_time() << std::endl;
 
     auto env_step = env->step(coll_action);
     auto rewards  = std::get<1>(env_step);
     std::string info;
-    info += "Rewards: ";
+    info += "Rewards:\n";
     for (auto rew : rewards)
     {
         info += "  " + std::to_string(rew);
     }
 
-    std::cout << info << std::endl;
+    info += "\nObservations\n";
+    for (int obs_index=0; obs_index < env->get_observation_space()[0]; obs_index++)
+    {
+        for (int agent_index=0; agent_index < env->get_number_of_agents(); agent_index++)
+        {
+            info += "  " + std::to_string(std::get<0>(env_step)[agent_index][obs_index]);
+        }
+        info += "\n";
+    }
 
-    cv_bridge::CvImage cv_img;
-    cv_img.header.stamp = ros::Time::now();
-    cv_img.encoding = "bgr8";
-    cv_img.image = env->get_rendered_pic();
-    render_publisher.publish(cv_img.toImageMsg());
+    std::cout << info << std::endl;
 
     auto observations = std::get<0>(env_step);
     for (int agent_index=0; agent_index < env->get_number_of_agents(); agent_index++)
@@ -113,40 +123,6 @@ void RosEnvironment::step(const ros::TimerEvent&)
 
 void RosEnvironment::process_action(int agent_index, const geometry_msgs::TwistConstPtr& action)
 {
-    float eps = 1e-5;
-
-    if (std::abs(action->linear.x) < (1. + eps))
-        if (action->linear.x > (0. - eps))
-            coll_action[agent_index][0] = action->linear.x;
-        else
-            ROS_WARN_STREAM("Received illegal linear velocity (below 0)");
-    else
-    {
-        ROS_WARN_STREAM("Received linear velocity greater than 1 m/s ("
-            << action->linear.x
-            << "), trimming");
-        if (action->linear.x > (0. - eps))
-        {
-            coll_action[agent_index][0] = 1.;
-        }
-        else
-            coll_action[agent_index][0] = -1;
-    }
-
-    if (std::abs(action->angular.z) < (M_PI/2 + eps))
-        coll_action[agent_index][1] = action->angular.z;
-    else
-    {
-        ROS_WARN_STREAM("Received angular velocity greater than "
-            << M_PI/2
-            << " rad/s ("
-            << action->angular.z
-            << "), trimming");
-        if (action->angular.z > (0. - eps))
-        {
-            coll_action[agent_index][1] = M_PI/2.;
-        }
-        else
-            coll_action[agent_index][1] = -M_PI/2;
-    }
+    coll_action[agent_index][0] = action->linear.x;
+    coll_action[agent_index][1] = action->angular.z;
 }

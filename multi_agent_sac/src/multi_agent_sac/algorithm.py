@@ -67,7 +67,7 @@ class MASAC:
 
         if self.auto_entropy:
             self.target_entropy = \
-                -torch.tensor([self.n_agents * self.act_size]).to(self.device).item()
+                -torch.tensor([self.n_agents * self.act_size], device=self.device).item()
             self.log_alpha      = \
                 torch.zeros((1,), requires_grad=True, device=self.device)
             self.alpha          = self.log_alpha.exp()
@@ -87,6 +87,7 @@ class MASAC:
         N = obs.shape[0] # sample size
 
         sampled_act, entropy, _ = self.policy.sample(obs)
+
         curr_q1, curr_q2 = self.critic(obs, sampled_act)
         curr_q = torch.min(curr_q1, curr_q2)
 
@@ -155,9 +156,9 @@ class MASAC:
             update_params(self.entropy_optim, entropy_loss)
             self.alpha = self.log_alpha.exp()
 
-        if self.auto_entropy:
             return q1_loss.item(), q2_loss.item(), \
                 policy_loss.item(), entropy_loss.item()
+
         else:
             return q1_loss.item(), q2_loss.item(), policy_loss.item()
 
