@@ -54,7 +54,7 @@ Environment::Environment(
     draw_laser                = false;
     draw_noisy_pose           = false;
     draw_global_path          = false;
-    goal_reaching_reward      = 4.;
+    goal_reaching_reward      = 1.;
     collision_reward          = -1.;
     goal_distance_reward_mult = -0.1;
     resolution_per_pix        = 5;
@@ -747,11 +747,6 @@ std::tuple<std::vector<float>, float> Environment::get_observation(int agent_ind
     std::get<0>(obs_and_reward).push_back(position.y + normal_dist(*generator));
     std::get<0>(obs_and_reward).push_back(yaw        + normal_dist(*generator));
 
-    // twist (current action will be the previous action from the perspective of the agent)
-    std::vector<float> twist = current_actions[agent_index];
-    std::get<0>(obs_and_reward).push_back(twist[0]);
-    std::get<0>(obs_and_reward).push_back(twist[1]);
-
     // subgoal direction and distance
     b2Vec2 agent_pos = agent_bodies[agent_index]->GetPosition();
     b2Vec2 goal_pos  = goal_positions[agent_index];
@@ -812,7 +807,7 @@ float Environment::get_episode_sim_time() const
 
 std::vector<int> Environment::get_observation_space() const
 {
-    int single_obs_len = 7 + laser_nrays;
+    int single_obs_len = 5 + laser_nrays;
     std::vector<int> ret(number_of_agents);
     std::fill(ret.begin(), ret.end(), single_obs_len);
     return ret;

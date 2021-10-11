@@ -139,7 +139,6 @@ class Environment
          *
          * The observations contained in the vector are the following, respectively:
          *   - agent_pose:                vector of linear x, y, and angle z
-         *   - prev_action:               vector of linear x, and angular z (memory)
          *   - direction to subgoal_pose: scalar
          *   - distance to goal:          scalar, for the value function
          *   - scan:                      vector of ranges
