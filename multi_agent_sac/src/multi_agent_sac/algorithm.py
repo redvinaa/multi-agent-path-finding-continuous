@@ -199,4 +199,4 @@ class MASAC:
         critic_model_file  = os.path.join(self.model_dir, 'critic.p')
 
         self.critic.load_state_dict(torch.load(critic_model_file))
-        self.policy.load_state_dict(torch.load(actor_model_file))
+        self.policy.load_state_dict(torch.load(policy_model_file))

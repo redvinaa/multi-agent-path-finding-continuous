@@ -4,7 +4,8 @@ import argparse
 import torch
 import os
 import numpy as np
-from multi_agent_sac.network import TestAgent
+from multi_agent_sac.algorithm import MASAC
+from multi_agent_sac.misc import from_unit_actions
 from mapf_env import Environment
 from rospkg import RosPack
 import json
@@ -40,18 +41,25 @@ class TestMASACRos:
             noise             = 0.,
             physics_step_size = 0.05,
             step_multiply     = 1,
-            max_steps         = 9999)
+            max_steps         = 99999)
 
-        # create agent
-        agent_weights_file = os.path.join(self.model_dir, 'agent.p')
-        self.agent = TestAgent(
-            self.env.get_observation_space()[0],
-            self.env.get_action_space()[0],
-            [self.c['actor_hidden_dim']])
+        # create model, load weights
+        device = torch.device('cuda' if self.c['device']=='cuda' and
+            torch.cuda.is_available() else 'cpu')
 
-        # load weights
-        actor_model_file  = os.path.join(self.model_dir, 'agent.p')
-        self.agent.load(actor_model_file)
+        self.model = MASAC(  # most of these are not used
+            n_agents          = self.c['n_agents'],
+            obs_size          = self.env.get_observation_space()[0],
+            act_size          = self.env.get_action_space()[0],
+            gamma             = self.c['gamma'],
+            tau               = self.c['tau'],
+            auto_entropy      = self.c['auto_entropy'],
+            actor_hidden      = [self.c['actor_hidden_dim']],
+            critic_hidden     = [self.c['critic_hidden_dim']],
+            model_dir         = self.model_dir,
+            device            = device)
+
+        self.model.load()
 
     def run(self) -> type(None):
         done = False
@@ -60,15 +68,13 @@ class TestMASACRos:
 
         while not done:
             # get actions
-            act = np.stack([self.agent.step(o) for o in obs])
-            act[:, 0] *= self.c['max_linear_speed']
-            act[:, 1] *= self.c['max_angular_speed']
+            act = self.model.step(obs, explore=False)
 
             # render
-            self.env.render(50, True)
+            self.env.render(100, True)
 
             # step
-            obs, _, dones = self.env.step(act)
+            obs, _, dones = self.env.step(from_unit_actions(act, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
             obs = np.array(obs)
             done = np.any(dones)
 
