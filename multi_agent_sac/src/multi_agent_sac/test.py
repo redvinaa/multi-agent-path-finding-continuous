@@ -39,7 +39,7 @@ class TestMASACRos:
             seed              = self.c['seed'],
             robot_diam        = self.c['robot_diam'],
             noise             = 0.,
-            physics_step_size = 0.05,
+            physics_step_size = 0.1,
             step_multiply     = 1,
             max_steps         = 99999)
 
@@ -71,10 +71,10 @@ class TestMASACRos:
             act = self.model.step(obs, explore=False)
 
             # render
-            self.env.render(100, True)
+            self.env.render(100, False)
 
             # step
-            obs, _, dones = self.env.step(from_unit_actions(act, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
+            obs, rew, info, dones = self.env.step(from_unit_actions(act, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
             obs = np.array(obs)
             done = np.any(dones)
 

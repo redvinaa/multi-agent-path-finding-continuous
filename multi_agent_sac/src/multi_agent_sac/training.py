@@ -54,41 +54,37 @@ class TrainProcess:
 
 
     def __evaluation_episode(self) -> type(None):
-        log_actions = np.empty((self.c['episode_length'], self.c['n_agents'], self.env.act_size))
-        log_rewards = np.zeros((self.c['n_agents']))
+        log_actions      = np.empty((self.c['episode_length'], self.c['n_threads'], self.c['n_agents'], self.env.act_size))
+        log_rewards      = np.empty((self.c['episode_length'], self.c['n_threads'], self.c['n_agents']))
+        log_reached_goal = np.empty((self.c['episode_length'], self.c['n_threads'], self.c['n_agents']))
 
-        env = Environment(
-            map_path         = self.c['map_image'],
-            map_size         = tuple(self.c['map_size']),
-            number_of_agents = self.c['n_agents'],
-            seed             = self.c['seed'],
-            robot_diam       = self.c['robot_diam'])
-
-        obs = env.reset()
-        obs = np.array(obs)
+        obs_v = self.env.reset()
 
         for step in range(self.c['episode_length']):
-            act = self.model.step(obs, explore=False)
+            act_v = np.stack([self.model.step(obs, explore=False) for obs in obs_v])
 
-            next_obs, rewards, dones = env.step(
-                from_unit_actions(act, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
+            next_obs_v, rewards_v, infos_v, dones_v = self.env.step(
+                from_unit_actions(act_v, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
 
-            obs = next_obs
-            obs = np.array(obs)
+            obs_v = next_obs_v
 
-            log_actions[step] = act
-            log_rewards += rewards
+            log_actions[step]      = act_v
+            log_rewards[step]      = rewards_v
+            log_reached_goal[step] = np.array([[i['reached_goal'] for i in info] for info in infos_v])
 
-        data = {'average': np.average(log_rewards)}
-        for i, rew in enumerate(log_rewards):
-            data.update({f'agent_{i}': rew})
+        log_rewards      = np.average(log_rewards, axis=0)
+        log_rewards      = np.average(log_rewards, axis=0)
+        log_rewards      = np.average(log_rewards, axis=0)
+        log_reached_goal = np.sum(log_reached_goal, axis=0)
+        log_reached_goal = np.average(log_reached_goal, axis=0)
+        log_reached_goal = np.average(log_reached_goal, axis=0)
+        log_actions_lin  = log_actions[:, :, :, 0].flatten()
+        log_actions_ang  = log_actions[:, :, :, 1].flatten()
 
-
-        self.logger.add_scalars('evaluation/episode_reward',    data, self.ep)
-        self.logger.add_histogram('evaluation/linear_actions', \
-            log_actions[:,:,0].flatten(), self.ep)
-        self.logger.add_histogram('evaluation/angular_actions', \
-            log_actions[:,:,1].flatten(), self.ep)
+        self.logger.add_scalar('evaluation/reached_goal_average', log_reached_goal, self.ep)
+        self.logger.add_scalar('evaluation/episode_reward_average', log_rewards, self.ep)
+        self.logger.add_histogram('evaluation/linear_actions', log_actions_lin, self.ep)
+        self.logger.add_histogram('evaluation/angular_actions', log_actions_ang, self.ep)
 
 
     def __training_episode(self) -> type(None):
@@ -105,7 +101,7 @@ class TrainProcess:
             else:
                 act_v = np.stack([self.model.step(obs, explore=True) for obs in obs_v])
 
-            next_obs_v, rewards_v, dones_v = self.env.step(
+            next_obs_v, rewards_v, infos_v, dones_v = self.env.step(
                 from_unit_actions(act_v, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
 
             for obs, act, rewards, next_obs, dones in zip(obs_v, act_v, rewards_v, next_obs_v, dones_v):
