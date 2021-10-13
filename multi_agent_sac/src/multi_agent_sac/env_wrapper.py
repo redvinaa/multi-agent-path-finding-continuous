@@ -23,8 +23,8 @@ class ParallelEnv:
         while True:
             cmd, data = pipe.recv()
             if cmd == 'step':
-                obs, reward, done = env.step(data, False)
-                pipe.send((obs, reward, done))
+                obs, reward, info, done = env.step(data, False)
+                pipe.send((obs, reward, info, done))
             elif cmd == 'reset':
                 obs = env.reset()
                 pipe.send(obs)
@@ -68,8 +68,8 @@ class ParallelEnv:
             pipe.send(('step', act))
 
         results = [pipe.recv() for pipe in self.main_pipes]
-        obs, rew, d = zip(*results)
-        return np.stack(obs), np.stack(rew), np.stack(d)
+        obs, rew, info, d = zip(*results)
+        return np.stack(obs), np.stack(rew), np.stack(info), np.stack(d)
 
 
     def reset(self) -> type(None):

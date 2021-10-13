@@ -6,6 +6,7 @@
 // other headers
 #include <box2d/box2d.h>
 #include <vector>
+#include <unordered_map>
 #include <tuple>
 #include <string>
 #include <random>
@@ -15,6 +16,10 @@
 #include <opencv2/imgproc.hpp>
 #include <gtest/gtest.h>
 #include "mapf_environment/pathfinder.h"
+
+
+//! \brief Type for storing agent info
+using t_info = std::unordered_map<std::string, float>;
 
 
 /*! \brief Environment for multi-agent path finding simulation
@@ -120,11 +125,11 @@ class Environment
          * After that, the environment checks if any of the agents reached their
          * goals. If yes, then for the given agents a new goal is generated.
          * \param render See step()
-         * \return Tuple of the observations for the agents and rewards
+         * \return Tuple of the observations for the agents, infos and rewards
          * \exception std::runtime_error Raised if done == true
          * \sa get_observation(), step()
          */
-        std::tuple<std::vector<std::vector<float>>, std::vector<float>> step_physics(bool render = false);
+        std::tuple<std::vector<std::vector<float>>, std::vector<t_info>, std::vector<float>> step_physics(bool render = false);
 
         /*! \brief Save the linear and angular velocity of the
          * given agent
@@ -223,9 +228,9 @@ class Environment
          *
          * \param actions vector of actions for every agens (size = no_agents * 2)
          * \param render If true, the env is rendered at every physics step, and waits
-         * \return Tuple of vectors: (obs, reward, done)
+         * \return Tuple of vectors: (obs, reward, info, done)
          */
-        std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool>>
+        std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<std::unordered_map<std::string, float>>, std::vector<bool>>
             step(std::vector<std::vector<float>> actions, bool render = false);
 
         /*! \brief Is the episode over

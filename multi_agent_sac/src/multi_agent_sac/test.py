@@ -71,10 +71,10 @@ class TestMASACRos:
             act = self.model.step(obs, explore=False)
 
             # render
-            self.env.render(100, True)
+            self.env.render(0, False)
 
             # step
-            obs, _, dones = self.env.step(from_unit_actions(act, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
+            obs, rew, info, dones = self.env.step(from_unit_actions(act, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
             obs = np.array(obs)
             done = np.any(dones)
 

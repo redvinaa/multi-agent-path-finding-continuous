@@ -54,8 +54,9 @@ class TrainProcess:
 
 
     def __evaluation_episode(self) -> type(None):
-        log_actions = np.empty((self.c['episode_length'], self.c['n_agents'], self.env.act_size))
-        log_rewards = np.zeros((self.c['n_agents']))
+        log_actions      = np.empty((self.c['episode_length'], self.c['n_agents'], self.env.act_size))
+        log_rewards      = np.zeros((self.c['n_agents'],))
+        log_reached_goal = np.zeros((self.c['n_agents'],))
 
         env = Environment(
             map_path         = self.c['map_image'],
@@ -70,7 +71,7 @@ class TrainProcess:
         for step in range(self.c['episode_length']):
             act = self.model.step(obs, explore=False)
 
-            next_obs, rewards, dones = env.step(
+            next_obs, rewards, infos, dones = env.step(
                 from_unit_actions(act, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
 
             obs = next_obs
@@ -79,11 +80,15 @@ class TrainProcess:
             log_actions[step] = act
             log_rewards += rewards
 
+            for i in range(self.c['n_agents']):
+                log_reached_goal[i] += infos[i]['reached_goal']
+
         data = {'average': np.average(log_rewards)}
         for i, rew in enumerate(log_rewards):
             data.update({f'agent_{i}': rew})
 
 
+        self.logger.add_scalar('evaluation/reached_goal',    np.sum(log_reached_goal), self.ep)
         self.logger.add_scalars('evaluation/episode_reward',    data, self.ep)
         self.logger.add_histogram('evaluation/linear_actions', \
             log_actions[:,:,0].flatten(), self.ep)
@@ -105,7 +110,7 @@ class TrainProcess:
             else:
                 act_v = np.stack([self.model.step(obs, explore=True) for obs in obs_v])
 
-            next_obs_v, rewards_v, dones_v = self.env.step(
+            next_obs_v, rewards_v, infos_v, dones_v = self.env.step(
                 from_unit_actions(act_v, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
 
             for obs, act, rewards, next_obs, dones in zip(obs_v, act_v, rewards_v, next_obs_v, dones_v):

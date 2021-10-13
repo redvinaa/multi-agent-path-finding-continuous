@@ -7,6 +7,7 @@
 #include <opencv2/imgproc.hpp>
 #include <box2d/box2d.h>
 #include <vector>
+#include <unordered_map>
 #include <tuple>
 #include <string>
 #include <utility>
@@ -381,7 +382,7 @@ void Environment::add_agent()
     collisions.push_back(false);
 }
 
-std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::step_physics(bool render/*=false*/)
+std::tuple<std::vector<std::vector<float>>, std::vector<t_info>, std::vector<float>> Environment::step_physics(bool render/*=false*/)
 {
     if (done == true)
         throw std::runtime_error("Attempted to step environment that is finished. Call reset() first");
@@ -499,19 +500,21 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>> Environment::ste
         }
     }
 
-    std::tuple<std::vector<std::vector<float>>, std::vector<float>> obs_and_rewards;
-    std::get<0>(obs_and_rewards).resize(number_of_agents);
-    std::get<1>(obs_and_rewards).resize(number_of_agents);
+    std::tuple<std::vector<std::vector<float>>, std::vector<t_info>, std::vector<float>> obs_info_and_rewards;
+    std::get<0>(obs_info_and_rewards).resize(number_of_agents);
+    std::get<1>(obs_info_and_rewards).resize(number_of_agents);
+    std::get<2>(obs_info_and_rewards).resize(number_of_agents);
 
     // get observations
     for (int i=0; i < number_of_agents; i++)
     {
         auto single_obs_and_reward = get_observation(i, reached_goal[i]);
-        std::get<0>(obs_and_rewards)[i] = std::get<0>(single_obs_and_reward);
-        std::get<1>(obs_and_rewards)[i] = std::get<1>(single_obs_and_reward);
+        std::get<0>(obs_info_and_rewards)[i] = std::get<0>(single_obs_and_reward);
+        std::get<1>(obs_info_and_rewards)[i] = {{"reached_goal", reached_goal[i]}};
+        std::get<2>(obs_info_and_rewards)[i] = std::get<1>(single_obs_and_reward);
     }
 
-    return obs_and_rewards;
+    return obs_info_and_rewards;
 }
 
 cv::Mat Environment::get_rendered_pic(bool debug/*=false*/)
@@ -731,7 +734,7 @@ t_point Environment::carrot_planner(const t_path route) const
     return route[idx-1];
 }
 
-std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool>>
+std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<std::unordered_map<std::string, float>>, std::vector<bool>>
     Environment::step(std::vector<std::vector<float>> actions, bool render/*=false*/)
 {
     assert(actions.size() == number_of_agents);
@@ -742,26 +745,28 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool
     for (int i=0; i < number_of_agents; i++)
         process_action(i, actions[i]);
 
-    std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<bool>> ret;
+    std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<t_info>, std::vector<bool>> ret;
     std::get<0>(ret).resize(number_of_agents);
     std::get<1>(ret).resize(number_of_agents);
     std::get<2>(ret).resize(number_of_agents);
+    std::get<3>(ret).resize(number_of_agents);
 
-    auto obs_and_reward = step_physics(render);
-    last_observation = std::get<0>(obs_and_reward);  // save observations for rendering
+    auto obs_info_and_reward = step_physics(render);
+    last_observation = std::get<0>(obs_info_and_reward);  // save observations for rendering
     current_steps++;
 
     for (int i=0; i < number_of_agents; i++)
     {
-        std::get<0>(ret)[i] = std::get<0>(obs_and_reward)[i];
-        std::get<1>(ret)[i] = std::get<1>(obs_and_reward)[i];
+        std::get<0>(ret)[i] = std::get<0>(obs_info_and_reward)[i];  // obs
+        std::get<1>(ret)[i] = std::get<2>(obs_info_and_reward)[i];  // reward
+        std::get<2>(ret)[i] = std::get<1>(obs_info_and_reward)[i];  // info
     }
 
     // set done
     if (current_steps >= max_steps)
         done = true;
 
-    std::fill(std::get<2>(ret).begin(), std::get<2>(ret).end(), done);
+    std::fill(std::get<3>(ret).begin(), std::get<3>(ret).end(), done);
 
     return ret;
 }
