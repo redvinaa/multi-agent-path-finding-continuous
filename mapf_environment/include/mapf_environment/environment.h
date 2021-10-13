@@ -120,12 +120,15 @@ class Environment
          *   - collisions,
          * along with the other parts of the observations.
          *
+         * As for the observations, the global observation vector is appended to the
+         * observation vector (like an extra agent).
+         *
          * Done is not set here, but in step(), which calls this function.
          *
          * After that, the environment checks if any of the agents reached their
          * goals. If yes, then for the given agents a new goal is generated.
          * \param render See step()
-         * \return Tuple of the observations for the agents, infos and rewards
+         * \return Tuple of the observations for the agents, the global observation, infos and rewards
          * \exception std::runtime_error Raised if done == true
          * \sa get_observation(), step()
          */
@@ -141,13 +144,18 @@ class Environment
          */
         void process_action(int agent_index, std::vector<float> action);
 
-        /*! \brief Calculate the observations for the given agent
+        /*! \brief Calculate the observations for the given agent, or the
+         *  global observation if agent_index < 0
          *
-         * The observations contained in the vector are the following, respectively:
+         * The observations for one agent are the following, respectively:
          *   - agent_pose:                vector of linear x, y, and angle z
          *   - direction to subgoal_pose: scalar
          *   - distance to goal:          scalar, for the value function
          *   - scan:                      vector of ranges
+         *
+         * The global observations are the following, respectively:
+         *   - agent_poses:               vector of linear x, y, and angle z
+         *   - goal_poses:                vector of x and y
          *
          * Rewards are calculated based on the reached_goal argument.
          *

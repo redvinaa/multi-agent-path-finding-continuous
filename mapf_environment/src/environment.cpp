@@ -501,7 +501,7 @@ std::tuple<std::vector<std::vector<float>>, std::vector<t_info>, std::vector<flo
     }
 
     std::tuple<std::vector<std::vector<float>>, std::vector<t_info>, std::vector<float>> obs_info_and_rewards;
-    std::get<0>(obs_info_and_rewards).resize(number_of_agents);
+    std::get<0>(obs_info_and_rewards).resize(number_of_agents + 1);
     std::get<1>(obs_info_and_rewards).resize(number_of_agents);
     std::get<2>(obs_info_and_rewards).resize(number_of_agents);
 
@@ -513,6 +513,8 @@ std::tuple<std::vector<std::vector<float>>, std::vector<t_info>, std::vector<flo
         std::get<1>(obs_info_and_rewards)[i] = {{"reached_goal", reached_goal[i]}};
         std::get<2>(obs_info_and_rewards)[i] = std::get<1>(single_obs_and_reward);
     }
+    auto global_obs = get_observation(-1, false);
+    std::get<0>(obs_info_and_rewards)[number_of_agents] = std::get<0>(global_obs);
 
     return obs_info_and_rewards;
 }
@@ -746,7 +748,7 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<std:
         process_action(i, actions[i]);
 
     std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<t_info>, std::vector<bool>> ret;
-    std::get<0>(ret).resize(number_of_agents);
+    std::get<0>(ret).resize(number_of_agents+1);
     std::get<1>(ret).resize(number_of_agents);
     std::get<2>(ret).resize(number_of_agents);
     std::get<3>(ret).resize(number_of_agents);
@@ -761,6 +763,7 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<std:
         std::get<1>(ret)[i] = std::get<2>(obs_info_and_reward)[i];  // reward
         std::get<2>(ret)[i] = std::get<1>(obs_info_and_reward)[i];  // info
     }
+    std::get<0>(ret)[number_of_agents] = std::get<0>(obs_info_and_reward)[number_of_agents]; // global_obs
 
     // set done
     if (current_steps >= max_steps)
@@ -785,6 +788,26 @@ void Environment::process_action(int agent_index, std::vector<float> action)
 
 std::tuple<std::vector<float>, float> Environment::get_observation(int agent_index, bool reached_goal)
 {
+    // global observation (no reward)
+    if (agent_index < 0)
+    {
+        std::vector<float> obs(number_of_agents * 4);
+        for (int i=0; i < number_of_agents; i++)
+        {
+            auto pos = agent_bodies[i]->GetPosition();
+            obs.push_back(pos.x);
+            obs.push_back(pos.y);
+        }
+        for (int i=0; i < number_of_agents; i++)
+        {
+            auto pos = goal_positions[i];
+            obs.push_back(pos.x);
+            obs.push_back(pos.y);
+        }
+
+        return std::make_tuple(obs, NAN);
+    }
+
     b2Body* agent = agent_bodies[agent_index];
     std::tuple<std::vector<float>, float> obs_and_reward;
 
@@ -860,8 +883,9 @@ float Environment::get_episode_sim_time() const
 std::vector<int> Environment::get_observation_space() const
 {
     int single_obs_len = 5 + laser_nrays;
-    std::vector<int> ret(number_of_agents);
-    std::fill(ret.begin(), ret.end(), single_obs_len);
+    std::vector<int> ret(number_of_agents+1);
+    std::fill(ret.begin(), ret.end()-1, single_obs_len);
+    ret[number_of_agents] = number_of_agents * 4;
     return ret;
 }
 

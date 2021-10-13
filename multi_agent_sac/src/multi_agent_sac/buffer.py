@@ -6,11 +6,13 @@ from typing import List, Tuple, Optional
 
 ## Replay buffer to store transitions for multi-agent RL
 class ReplayBuffer:
-    def __init__(self, length: int, n_agents: int, obs_size: int, act_size: int):
-        self.max_length = length
-        self.n_agents   = n_agents
-        self.obs_size   = obs_size
-        self.act_size   = act_size
+    def __init__(self, length: int, n_agents: int, global_obs_size: int,
+            obs_size: int, act_size: int):
+        self.max_length      = length
+        self.n_agents        = n_agents
+        self.global_obs_size = global_obs_size
+        self.obs_size        = obs_size
+        self.act_size        = act_size
 
         self.buf = deque(maxlen=self.max_length)
 
@@ -23,7 +25,7 @@ class ReplayBuffer:
             next_obs: np.ndarray,
             d: np.ndarray) -> type(None):
 
-        # make sure it's numpy arrays
+        # make sure it's numpy arrays # TODO can't work
         trans = (obs, act, rew, next_obs, d)
         trans = tuple([np.array(el) for el in trans])
         obs, act, rew, next_obs, d = trans

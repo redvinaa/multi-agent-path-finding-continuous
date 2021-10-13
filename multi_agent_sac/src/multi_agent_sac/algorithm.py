@@ -28,6 +28,7 @@ class MASAC:
     #  @param logger Optional tensorboardX logger
     def __init__(self,
             n_agents: int,
+            global_obs_size: int,
             obs_size: int,
             act_size: int,
             *,
@@ -40,23 +41,24 @@ class MASAC:
             auto_entropy: bool=False,
             device: str):
 
-        self.n_agents      = n_agents
-        self.obs_size      = obs_size
-        self.act_size      = act_size
-        self.gamma         = gamma
-        self.tau           = tau
-        self.auto_entropy  = auto_entropy
-        self.actor_hidden  = actor_hidden
-        self.critic_hidden = critic_hidden
-        self.model_dir     = model_dir
-        self.device        = device
+        self.n_agents        = n_agents
+        self.obs_size        = obs_size
+        self.global_obs_size = global_obs_size
+        self.act_size        = act_size
+        self.gamma           = gamma
+        self.tau             = tau
+        self.auto_entropy    = auto_entropy
+        self.actor_hidden    = actor_hidden
+        self.critic_hidden   = critic_hidden
+        self.model_dir       = model_dir
+        self.device          = device
 
         self.policy        = TanhGaussianPolicy(n_agents, obs_size, \
             act_size, actor_hidden).to(self.device)
 
-        self.critic        = DoubleQNetwork(n_agents, obs_size, \
+        self.critic        = DoubleQNetwork(n_agents, global_obs_size, \
             act_size, critic_hidden).to(self.device)
-        self.tgt_critic    = DoubleQNetwork(n_agents, obs_size, \
+        self.tgt_critic    = DoubleQNetwork(n_agents, global_obs_size, \
             act_size, critic_hidden).to(self.device).eval()
         hard_update(self.tgt_critic, self.critic)
         grad_false(self.tgt_critic)
@@ -86,9 +88,9 @@ class MASAC:
         obs, act, rew, next_obs, d = sample
         N = obs.shape[0] # sample size
 
-        sampled_act, entropy, _ = self.policy.sample(obs)
+        sampled_act, entropy, _ = self.policy.sample(obs[:, :-1])
 
-        curr_q1, curr_q2 = self.critic(obs, sampled_act)
+        curr_q1, curr_q2 = self.critic(obs[:, -1], sampled_act)
         curr_q = torch.min(curr_q1, curr_q2)
 
         # we want to maximize this
@@ -107,12 +109,12 @@ class MASAC:
         N = obs.shape[0] # sample size
 
         # get current eval
-        curr_q1, curr_q2 = self.critic(obs, act)
+        curr_q1, curr_q2 = self.critic(obs[:, -1], act)
 
         # calculate update target
         with torch.no_grad():
-            next_act, next_entropy, _ = self.policy.sample(next_obs)
-            next_q1, next_q2 = self.tgt_critic(next_obs, next_act)
+            next_act, next_entropy, _ = self.policy.sample(next_obs[:, :-1])
+            next_q1, next_q2 = self.tgt_critic(next_obs[:, -1], next_act)
             next_q = torch.min(next_q1, next_q2)
 
         target_q = rew + self.gamma * (1. - d) * next_q

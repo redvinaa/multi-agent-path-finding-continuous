@@ -58,20 +58,13 @@ class TrainProcess:
         log_rewards      = np.zeros((self.c['n_agents'],))
         log_reached_goal = np.zeros((self.c['n_agents'],))
 
-        env = Environment(
-            map_path         = self.c['map_image'],
-            map_size         = tuple(self.c['map_size']),
-            number_of_agents = self.c['n_agents'],
-            seed             = self.c['seed'],
-            robot_diam       = self.c['robot_diam'])
-
-        obs = env.reset()
+        obs = self.env.reset()
         obs = np.array(obs)
 
         for step in range(self.c['episode_length']):
             act = self.model.step(obs, explore=False)
 
-            next_obs, rewards, infos, dones = env.step(
+            next_obs, rewards, infos, dones = self.env.step(
                 from_unit_actions(act, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
 
             obs = next_obs
@@ -199,8 +192,9 @@ def train_MASAC(config: dict) -> type(None):
 
         model = MASAC(
             n_agents          = config['n_agents'],
-            obs_size          = env.obs_size,
-            act_size          = env.act_size,
+            global_obs_size   = env.obs_space[-1],
+            obs_size          = env.obs_space[0],
+            act_size          = env.act_space[0],
             gamma             = config['gamma'],
             tau               = config['tau'],
             auto_entropy      = config['auto_entropy'],
@@ -212,8 +206,9 @@ def train_MASAC(config: dict) -> type(None):
         buffer = ReplayBuffer(
             length=config['buffer_length'],
             n_agents=config['n_agents'],
-            obs_size=env.obs_size,
-            act_size=env.act_size)
+            global_obs_size=env.obs_space[-1]
+            obs_size=env.obs_space[0],
+            act_size=env.act_space[0])
 
         TrainProcess(env, model, buffer, logger, log_dir, config, rng)
 

@@ -58,8 +58,8 @@ class ParallelEnv:
         self.main_pipes[0].send(('get_spaces', None))
         spaces = self.main_pipes[0].recv()
         self.n_agents = len(spaces[0])
-        self.obs_size = spaces[0][0]
-        self.act_size = spaces[1][0]
+        self.obs_space = spaces[0]
+        self.act_space = spaces[1]
 
 
     def step(self, actions: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:

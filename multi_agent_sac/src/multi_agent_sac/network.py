@@ -48,7 +48,7 @@ class LinearNetwork(nn.Module):
 
 ## Class for double Q-learning
 #
-#  All observations and actions are flattened, and passed to the ANN, and the network
+#  The global observation and all actions are flattened, and passed to the ANN, and the network
 #  estimates the value from the perspective of the firstly input agent
 class DoubleQNetwork(nn.Module):
     def __init__(self,
@@ -65,7 +65,7 @@ class DoubleQNetwork(nn.Module):
         self.hidden_layers = hidden_layers
         self.activation    = activation
 
-        self.input_size  = n_agents * (obs_size + act_size)
+        self.input_size  = obs_size + self.n_agents * self.act_size
         self.output_size = 1
 
         self.Q1 = LinearNetwork(
@@ -77,9 +77,8 @@ class DoubleQNetwork(nn.Module):
     def forward(self, obs: torch.Tensor, act: torch.Tensor) -> \
             Tuple[torch.Tensor, torch.Tensor]:
 
-        assert(len(obs.shape) == 3) # shape=(N, n_agents, obs_size)
-        assert(obs.shape[1]   == self.n_agents)
-        assert(obs.shape[2]   == self.obs_size)
+        assert(len(obs.shape) == 2) # shape=(N, obs_size)
+        assert(obs.shape[1]   == self.obs_size)
         N = obs.shape[0] # sample size
 
         assert(len(act.shape) == 3) # shape=(N, n_agents, act_size)
@@ -91,19 +90,12 @@ class DoubleQNetwork(nn.Module):
         vals_q2 = torch.empty((N, self.n_agents))
 
         for i in range(self.n_agents):
-            obs_rolled = torch.roll(obs, shifts=-i, dims=1) # roll agents dimension
-            act_rolled = torch.roll(act, shifts=-i, dims=1)
+            act_rolled = torch.roll(act, shifts=-i, dims=1) # roll agents dimension
+            act_flat   = torch.reshape(act_rolled, shape=(N,
+                self.n_agents*self.act_size))# flatten to shape=(N, n_agents*act_size)
 
-            obs_act = torch.cat((obs_rolled, act_rolled), dim=2)
-            # shape=(N, n_agents, obs_size+act_size)
-
-            obs_act = torch.reshape(obs_act, shape=(N, self.input_size))
-            # shape=(N, n_agents*(obs_size+act_size))
-
-            ## cat-ed obs and act of the i-th agent (first sample) << this works
-            #  a = obs_act[0, :(self.obs_size+self.act_size)]
-            #  b = torch.cat((obs[0,i], act[0,i]), dim=0)
-            #  assert((a == b).all())
+            obs_act = torch.cat((obs, act_rolled), dim=1)
+            # shape=(N, self.input_size)
 
             q1 = self.Q1(obs_act) # shape=(N, 1)
             q2 = self.Q2(obs_act)
