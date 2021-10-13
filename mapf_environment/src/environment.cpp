@@ -54,9 +54,9 @@ Environment::Environment(
     draw_laser                = false;
     draw_noisy_pose           = false;
     draw_global_path          = false;
-    goal_reaching_reward      = 1.;
+    goal_reaching_reward      = 4.;
     collision_reward          = -1.;
-    goal_distance_reward_mult = -0.1;
+    goal_distance_reward_mult = -1;
     resolution_per_pix        = 5;
     carrot_planner_dist       = 5;
 
