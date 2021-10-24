@@ -1,16 +1,16 @@
-n_runs: 1
-n_threads: 10
-map_image: test1_4x4
+n_runs: 4
+n_threads: 7
+map_image: test_4x4
 map_size: [4, 4]
 robot_diam: 0.7
 buffer_length: 10000
 batch_size: 1000
 n_episodes: 10000
 n_agents: 2
-episode_length: 30
+episode_length: 60
 steps_per_update: 1
 save_interval: 1000
-eval_interval: 1000
+eval_interval: 100
 actor_hidden_dim: 64
 critic_hidden_dim: 64
 seed: 0
