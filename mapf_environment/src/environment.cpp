@@ -510,7 +510,7 @@ std::tuple<std::vector<std::vector<float>>, std::vector<t_info>, std::vector<flo
     {
         auto single_obs_and_reward = get_observation(i, reached_goal[i]);
         std::get<0>(obs_info_and_rewards)[i] = std::get<0>(single_obs_and_reward);
-        std::get<1>(obs_info_and_rewards)[i] = {{"reached_goal", reached_goal[i]}};
+        std::get<1>(obs_info_and_rewards)[i] = {{"reached_goal", reached_goal[i]}, {"collision", collisions[i]}};
         std::get<2>(obs_info_and_rewards)[i] = std::get<1>(single_obs_and_reward);
     }
 

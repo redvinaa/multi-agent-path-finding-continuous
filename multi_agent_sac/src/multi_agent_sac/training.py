@@ -57,6 +57,7 @@ class TrainProcess:
         log_actions      = np.empty((self.c['episode_length'], self.c['n_threads'], self.c['n_agents'], self.env.act_size))
         log_rewards      = np.empty((self.c['episode_length'], self.c['n_threads'], self.c['n_agents']))
         log_reached_goal = np.empty((self.c['episode_length'], self.c['n_threads'], self.c['n_agents']))
+        log_collision    = np.empty((self.c['episode_length'], self.c['n_threads'], self.c['n_agents']))
 
         obs_v = self.env.reset()
 
@@ -71,20 +72,25 @@ class TrainProcess:
             log_actions[step]      = act_v
             log_rewards[step]      = rewards_v
             log_reached_goal[step] = np.array([[i['reached_goal'] for i in info] for info in infos_v])
+            log_collision[step]    = np.array([[i['collision']    for i in info] for info in infos_v])
 
-        log_rewards      = np.average(log_rewards, axis=0)
-        log_rewards      = np.average(log_rewards, axis=0)
-        log_rewards      = np.average(log_rewards, axis=0)
-        log_reached_goal = np.sum(log_reached_goal, axis=0)
+        log_rewards      = np.average(log_rewards,      axis=0)
+        log_rewards      = np.average(log_rewards,      axis=0)
+        log_rewards      = np.average(log_rewards,      axis=0)
+        log_reached_goal = np.sum(log_reached_goal,     axis=0)
         log_reached_goal = np.average(log_reached_goal, axis=0)
         log_reached_goal = np.average(log_reached_goal, axis=0)
+        log_collision    = np.sum(log_collision,        axis=0)
+        log_collision    = np.average(log_collision,    axis=0)
+        log_collision    = np.average(log_collision,    axis=0)
         log_actions_lin  = log_actions[:, :, :, 0].flatten()
         log_actions_ang  = log_actions[:, :, :, 1].flatten()
 
-        self.logger.add_scalar('evaluation/reached_goal_average', log_reached_goal, self.ep)
-        self.logger.add_scalar('evaluation/episode_reward_average', log_rewards, self.ep)
-        self.logger.add_histogram('evaluation/linear_actions', log_actions_lin, self.ep)
-        self.logger.add_histogram('evaluation/angular_actions', log_actions_ang, self.ep)
+        self.logger.add_scalar('evaluation/reached_goal_average',   log_reached_goal, self.ep)
+        self.logger.add_scalar('evaluation/collision_average',      log_collision,    self.ep)
+        self.logger.add_scalar('evaluation/episode_reward_average', log_rewards,      self.ep)
+        self.logger.add_histogram('evaluation/linear_actions',      log_actions_lin,  self.ep)
+        self.logger.add_histogram('evaluation/angular_actions',     log_actions_ang,  self.ep)
 
 
     def __training_episode(self) -> type(None):
