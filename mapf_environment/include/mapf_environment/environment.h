@@ -176,7 +176,7 @@ class Environment
     public:
         /*! \brief Sets the default parameters, and calls init_map() and init_physics()
          *
-         *  One step takes 0.1 s in sim time, and one ep is 30 s.
+         *  One step takes 0.5 s in sim time, and one ep is 30 s.
          *
          * \param _map_path Map image to load
          * \param _map_size  Real-life size of the area, in meters, width, height
@@ -194,11 +194,11 @@ class Environment
             t_point      _map_size,
             int          _number_of_agents  = 2,
             unsigned int _seed              = 0,
-            int          _max_steps         = 300,
+            int          _max_steps         = 60,
             float        _robot_diam        = 0.7,
             float        _noise             = 0.00,
             float        _physics_step_size = 0.1,
-            int          _step_multiply     = 1);
+            int          _step_multiply     = 5);
 
         /*! \brief Set done=false, generate new starting positions and goals for all agents
          * \return First observation

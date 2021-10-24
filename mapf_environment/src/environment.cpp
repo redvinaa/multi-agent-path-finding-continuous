@@ -29,7 +29,7 @@ Environment::Environment(
     float        _robot_diam /* 0.7 */,
     float        _noise /* 0.00 */,
     float        _physics_step_size /* 0.1 */,
-    int          _step_multiply /* 1 */):
+    int          _step_multiply /* 5 */):
         gravity(0, 0),
         world(gravity),
         normal_dist(0., _noise),

@@ -18,7 +18,8 @@ class ParallelEnv:
             map_size         = tuple(config['map_size']),
             number_of_agents = config['n_agents'],
             seed             = config['seed'],
-            robot_diam       = config['robot_diam'])
+            robot_diam       = config['robot_diam'],
+            max_steps        = config['episode_length'])
 
         while True:
             cmd, data = pipe.recv()
