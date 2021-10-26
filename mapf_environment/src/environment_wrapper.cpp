@@ -46,7 +46,6 @@ RosEnvironment::RosEnvironment(ros::NodeHandle _nh):
         0,  // seed
         99999,  // max_steps
         robot_diam,
-        0.,  // noise
         0.05,  // physics_step_size
         1);  // step_multiply
 

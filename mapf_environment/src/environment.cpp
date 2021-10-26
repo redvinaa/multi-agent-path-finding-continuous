@@ -27,12 +27,10 @@ Environment::Environment(
     unsigned int _seed /* 0 */,
     int          _max_steps /* 60 */,
     float        _robot_diam /* 0.7 */,
-    float        _noise /* 0.00 */,
     float        _physics_step_size /* 0.1 */,
     int          _step_multiply /* 5 */):
         gravity(0, 0),
         world(gravity),
-        normal_dist(0., _noise),
         uniform_dist(0., 1.)
 {
     map_path                  = _map_path;
@@ -41,7 +39,6 @@ Environment::Environment(
     seed                      = _seed;
     max_steps                 = _max_steps;
     robot_diam                = _robot_diam;
-    noise                     = _noise;
     physics_step_size         = _physics_step_size;
     step_multiply             = _step_multiply;
 
@@ -53,7 +50,6 @@ Environment::Environment(
     render_height             = 900;
     laser_nrays               = 10;
     draw_laser                = false;
-    draw_noisy_pose           = false;
     draw_global_path          = false;
     goal_reaching_reward      = 4.;
     collision_reward          = -1.;
@@ -494,7 +490,7 @@ std::tuple<std::vector<std::vector<float>>, std::vector<t_info>, std::vector<flo
                     range = (pt_from - callback.point).Length();
             }
 
-            laser_scans[i][j] = range + normal_dist(*generator);
+            laser_scans[i][j] = range;
         }
     }
 
@@ -594,7 +590,6 @@ cv::Mat Environment::get_rendered_pic(bool debug/*=false*/)
 
     // draw agents
     float inner_radius = robot_radius * 0.8;
-    float noisy_pose_radius  = robot_radius * 0.1;
     auto font = cv::FONT_HERSHEY_TRIPLEX;
     int thickness = 3;
     int base_line = 0;
@@ -726,7 +721,7 @@ void Environment::process_action(int agent_index, std::vector<float> action)
     current_actions[agent_index] = action;
 }
 
-std::tuple<std::vector<float>, float> Environment::get_observation(int agent_index, bool reached_goal)
+std::tuple<std::vector<float>, float> Environment::get_observation(int agent_index, bool reached_goal) const
 {
     if (agent_index >= 0)
     {

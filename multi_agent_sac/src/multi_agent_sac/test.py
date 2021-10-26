@@ -38,7 +38,6 @@ class TestMASACRos:
             number_of_agents  = self.c['n_agents'],
             seed              = self.c['seed'],
             robot_diam        = self.c['robot_diam'],
-            noise             = 0.,
             physics_step_size = 0.1,
             step_multiply     = 1,
             max_steps         = 99999)

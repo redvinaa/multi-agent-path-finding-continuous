@@ -49,10 +49,10 @@ class Environment
         std::vector<t_point> obstacle_positions;
         std::tuple<float, float> map_size;  // width, height
         std::vector<int> map_indices;
-        bool draw_laser, draw_noisy_pose, draw_global_path, done;
+        bool draw_laser, draw_global_path, done;
         float block_size, scale_factor, laser_max_angle, laser_max_dist,
             robot_diam, robot_radius, goal_reaching_reward, collision_reward,
-            goal_distance_reward_mult, episode_sim_time, noise, obstacle_width,
+            goal_distance_reward_mult, episode_sim_time, obstacle_width,
             obstacle_height, safe_pix_width, safe_pix_height;
         std::string map_path;
         int render_height, render_width, laser_nrays, step_multiply, number_of_agents,
@@ -64,7 +64,6 @@ class Environment
 
         // random
         std::shared_ptr<std::default_random_engine> generator;
-        std::normal_distribution<float> normal_dist;
         std::uniform_real_distribution<float> uniform_dist;
 
         /*! \brief Calculate position from pixel on a map */
@@ -160,7 +159,7 @@ class Environment
          * \sa step_physics()
          * \return Tuple of the calculated observation vector and the reward
          */
-        std::tuple<std::vector<float>, float> get_observation(int agent_index, bool reached_goal);
+        std::tuple<std::vector<float>, float> get_observation(int agent_index, bool reached_goal) const;
 
         /*! \brief Gets the i-th point on the path of the agent
          *  as set in the variable carrot_planner_dist */
@@ -198,7 +197,6 @@ class Environment
          * \param _step_multiply When step_physics() gets called, step the environment this many times
          * \param _robot_diam Diameter of the simulated robots (one pixel on the map is 1 meter)
          * \param _max_steps The episode is ended after this many steps
-         * \param _noise Zero mean Gaussian noise applied to agent_pose and scan in the Observations
          * \param _seed Seed to generate random numbers
          * \sa init_map(), init_physics()
          */
@@ -209,7 +207,6 @@ class Environment
             unsigned int _seed              = 0,
             int          _max_steps         = 60,
             float        _robot_diam        = 0.7,
-            float        _noise             = 0.00,
             float        _physics_step_size = 0.1,
             int          _step_multiply     = 5);
 
