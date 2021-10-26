@@ -325,12 +325,10 @@ std::vector<std::vector<float>> Environment::reset()
 
     // get observations
     auto obs_and_rewards = step_physics();  // no movement, but calculate laser scans
-    last_observation = std::get<0>(obs_and_rewards);  // save observations for rendering
 
-    std::vector<std::vector<float>> out(number_of_agents);
-    for (int i=0; i < number_of_agents; i++)
+    std::vector<std::vector<float>> out(number_of_agents+1);
+    for (int i=0; i < number_of_agents+1; i++)
     {
-        out[i].resize(get_observation_space()[0]);
         out[i] = std::get<0>(obs_and_rewards)[i];
     }
 
@@ -501,9 +499,11 @@ std::tuple<std::vector<std::vector<float>>, std::vector<t_info>, std::vector<flo
     }
 
     std::tuple<std::vector<std::vector<float>>, std::vector<t_info>, std::vector<float>> obs_info_and_rewards;
-    std::get<0>(obs_info_and_rewards).resize(number_of_agents);
+    std::get<0>(obs_info_and_rewards).resize(number_of_agents+1);
     std::get<1>(obs_info_and_rewards).resize(number_of_agents);
     std::get<2>(obs_info_and_rewards).resize(number_of_agents);
+
+    std::get<0>(obs_info_and_rewards)[number_of_agents] = std::get<0>(get_observation(-1, false));
 
     // get observations
     for (int i=0; i < number_of_agents; i++)
@@ -645,17 +645,6 @@ cv::Mat Environment::get_rendered_pic(bool debug/*=false*/)
         textSize.y = center.y + textSize.y / 2;
         cv::putText(rendered_image, std::to_string(i), textSize, font, scale, cv::Scalar(0, 0, 0), thickness);
 
-        if (draw_noisy_pose or debug)
-        {
-            float noisy_pose_x = last_observation[i][0];
-            float noisy_pose_y = last_observation[i][1];
-            cv::Point noisy_center(noisy_pose_x*scale_factor, render_height-noisy_pose_y*scale_factor);
-            cv::circle(rendered_image, noisy_center, static_cast<int>(noisy_pose_radius*scale_factor),
-                cv::Scalar(0, 0, 0), 2);
-            cv::circle(rendered_image, noisy_center, static_cast<int>(noisy_pose_radius*scale_factor),
-                cv::Scalar(255, 255, 255), -1);
-        }
-
         // laser scans
         if (draw_laser or debug)
         {
@@ -687,7 +676,7 @@ t_point Environment::carrot_planner(const t_path route) const
     return route[idx-1];
 }
 
-std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<std::unordered_map<std::string, float>>, std::vector<bool>>
+std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<t_info>, std::vector<bool>>
     Environment::step(std::vector<std::vector<float>> actions, bool render/*=false*/)
 {
     assert(actions.size() == number_of_agents);
@@ -699,13 +688,12 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<std:
         process_action(i, actions[i]);
 
     std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<t_info>, std::vector<bool>> ret;
-    std::get<0>(ret).resize(number_of_agents);
+    std::get<0>(ret).resize(number_of_agents+1);
     std::get<1>(ret).resize(number_of_agents);
     std::get<2>(ret).resize(number_of_agents);
     std::get<3>(ret).resize(number_of_agents);
 
     auto obs_info_and_reward = step_physics(render);
-    last_observation = std::get<0>(obs_info_and_reward);  // save observations for rendering
     current_steps++;
 
     for (int i=0; i < number_of_agents; i++)
@@ -714,6 +702,8 @@ std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<std:
         std::get<1>(ret)[i] = std::get<2>(obs_info_and_reward)[i];  // reward
         std::get<2>(ret)[i] = std::get<1>(obs_info_and_reward)[i];  // info
     }
+    std::get<0>(ret)[number_of_agents] =
+        std::get<0>(obs_info_and_reward)[number_of_agents];  // global obs
 
     // set done
     if (current_steps >= max_steps)
@@ -738,28 +728,88 @@ void Environment::process_action(int agent_index, std::vector<float> action)
 
 std::tuple<std::vector<float>, float> Environment::get_observation(int agent_index, bool reached_goal)
 {
-    b2Body* agent = agent_bodies[agent_index];
-    std::tuple<std::vector<float>, float> obs_and_reward;
+    if (agent_index >= 0)
+    {
+        // agent observation
 
-    // position
-    b2Vec2 position = agent_bodies[agent_index]->GetPosition();
+        b2Body* agent = agent_bodies[agent_index];
+        std::tuple<std::vector<float>, float> obs_and_reward;
+        std::get<0>(obs_and_reward).reserve(1 + laser_nrays + (number_of_agents-1) * 6);
 
-    float yaw = agent->GetAngle();
-    yaw = std::fmod(yaw, M_PI * 2);  // normalize angle between 0 and 2*pi
+        // subgoal angle
+        float ang, dist;
+        std::tie(ang, dist) = get_subgoal(agent->GetPosition(), goal_positions[agent_index]);
+        std::get<0>(obs_and_reward).push_back(ang);
 
-    // method is not const because rng state changes
-    std::get<0>(obs_and_reward).push_back(position.x + normal_dist(*generator));
-    std::get<0>(obs_and_reward).push_back(position.y + normal_dist(*generator));
-    std::get<0>(obs_and_reward).push_back(yaw        + normal_dist(*generator));
+        // scan
+        std::get<0>(obs_and_reward).insert(std::get<0>(obs_and_reward).begin()+1,
+            laser_scans[agent_index].begin(), laser_scans[agent_index].end());
 
-    // subgoal direction and distance
-    b2Vec2 agent_pos = agent_bodies[agent_index]->GetPosition();
-    b2Vec2 goal_pos  = goal_positions[agent_index];
+        for (int i=0; i < number_of_agents; i++)
+        {
+            if (i == agent_index)
+                continue;
 
-    int start_x = agent_pos.x / safe_pix_width;
-    int start_y = map_safety.size().height - agent_pos.y / safe_pix_height;
-    int goal_x  = goal_pos.x / safe_pix_width;
-    int goal_y  = map_safety.size().height - goal_pos.y / safe_pix_height;
+            b2Vec2 pos = agent_bodies[i]->GetPosition();
+            float other_ang  = agent_bodies[i]->GetAngle();
+            std::get<0>(obs_and_reward).push_back(pos.x);
+            std::get<0>(obs_and_reward).push_back(pos.y);
+            std::get<0>(obs_and_reward).push_back(other_ang);
+
+            b2Vec2 vel = agent_bodies[i]->GetLinearVelocity();
+            float ang_vel = agent_bodies[i]->GetAngularVelocity();
+            std::get<0>(obs_and_reward).push_back(vel.x);
+            std::get<0>(obs_and_reward).push_back(vel.y);
+            std::get<0>(obs_and_reward).push_back(ang_vel);
+        }
+
+        // reward and done
+        float reward = 0.;
+        if (reached_goal)
+            reward = goal_reaching_reward;
+        else if (collisions[agent_index])
+            reward = collision_reward;
+
+        assert(dist >= 0.);
+        reward += std::sqrt(dist) * goal_distance_reward_mult;
+
+        std::get<1>(obs_and_reward) = reward;
+
+        return obs_and_reward;
+    }
+    else
+    {
+        // global observation
+        std::tuple<std::vector<float>, float> obs_and_reward;
+
+        std::get<0>(obs_and_reward).reserve(5*number_of_agents);
+        std::get<1>(obs_and_reward) = NAN;  // no reward in global setting
+
+        for (int i=0; i < number_of_agents; i++)
+        {
+            // position
+            std::get<0>(obs_and_reward).push_back(agent_bodies[i]->GetPosition().x);
+            std::get<0>(obs_and_reward).push_back(agent_bodies[i]->GetPosition().y);
+            std::get<0>(obs_and_reward).push_back(
+                std::fmod(agent_bodies[i]->GetAngle(), M_PI * 2));
+
+            float ang, dist;
+            std::tie(ang, dist) = get_subgoal(agent_bodies[i]->GetPosition(), goal_positions[i]);
+
+            std::get<0>(obs_and_reward).push_back(ang);
+            std::get<0>(obs_and_reward).push_back(dist);
+        }
+
+        return obs_and_reward;
+    }
+}
+
+std::tuple<float, float> Environment::get_subgoal(b2Vec2 start, b2Vec2 goal) const
+{
+    int start_x = start.x / safe_pix_width;
+    int start_y = map_safety.size().height - start.y / safe_pix_height;
+    int goal_x  = goal.x / safe_pix_width;
+    int goal_y  = map_safety.size().height - goal.y / safe_pix_height;
 
     t_path route;
     float dist;
@@ -769,30 +819,11 @@ std::tuple<std::vector<float>, float> Environment::get_observation(int agent_ind
     float carr_x, carr_y;
     std::tie(carr_x, carr_y) = carrot_planner(route);
 
-    carr_x = (carr_x + 0.5) * safe_pix_width - agent_pos.x;
-    carr_y = std::get<1>(map_size) - (carr_y + 0.5) * safe_pix_height - agent_pos.y;
+    carr_x = (carr_x + 0.5) * safe_pix_width - start.x;
+    carr_y = std::get<1>(map_size) - (carr_y + 0.5) * safe_pix_height - start.y;
 
     float carr_angle = std::atan2(carr_y, carr_x);
-    std::get<0>(obs_and_reward).push_back(carr_angle);
-    std::get<0>(obs_and_reward).push_back(dist);
-
-    // scan
-    std::get<0>(obs_and_reward).insert(std::get<0>(obs_and_reward).end(),
-        laser_scans[agent_index].begin(), laser_scans[agent_index].end());
-
-    // reward and done
-    float reward = 0.;
-    if (reached_goal)
-        reward = goal_reaching_reward;
-    else if (collisions[agent_index])
-        reward = collision_reward;
-
-    assert(dist >= 0.);
-    reward += std::sqrt(dist) * goal_distance_reward_mult;
-
-    std::get<1>(obs_and_reward) = reward;
-
-    return obs_and_reward;
+    return std::make_tuple(carr_angle, dist);
 }
 
 bool Environment::is_done() const
@@ -812,9 +843,10 @@ float Environment::get_episode_sim_time() const
 
 std::vector<int> Environment::get_observation_space() const
 {
-    int single_obs_len = 5 + laser_nrays;
-    std::vector<int> ret(number_of_agents);
-    std::fill(ret.begin(), ret.end(), single_obs_len);
+    int agent_obs_len = 1 + laser_nrays + (number_of_agents-1) * 6;
+    std::vector<int> ret(number_of_agents+1);
+    std::fill(ret.begin(), ret.end()-1, agent_obs_len);
+    ret.back() = 5*number_of_agents;
     return ret;
 }
 

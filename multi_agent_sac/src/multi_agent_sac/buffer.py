@@ -6,34 +6,33 @@ from typing import List, Tuple, Optional
 
 ## Replay buffer to store transitions for multi-agent RL
 class ReplayBuffer:
-    def __init__(self, length: int, n_agents: int, obs_size: int, act_size: int):
-        self.max_length = length
-        self.n_agents   = n_agents
-        self.obs_size   = obs_size
-        self.act_size   = act_size
+    def __init__(self, length: int, n_agents: int, obs_space: Tuple[int], act_space: Tuple[int]):
+        self.max_length  = length
+        self.n_agents    = n_agents
+        self.obs_space   = obs_space
+        self.act_space   = act_space
 
         self.buf = deque(maxlen=self.max_length)
 
 
     ## Push transition into buffer
     def push(self,
-            obs: np.ndarray,
+            obs: Tuple[np.ndarray, np.ndarray],
             act: np.ndarray,
             rew: np.ndarray,
-            next_obs: np.ndarray,
+            next_obs: Tuple[np.ndarray, np.ndarray],
             d: np.ndarray) -> type(None):
 
-        # make sure it's numpy arrays
         trans = (obs, act, rew, next_obs, d)
-        trans = tuple([np.array(el) for el in trans])
-        obs, act, rew, next_obs, d = trans
 
         # check shapes
-        assert(obs.shape      == (self.n_agents, self.obs_size,))
-        assert(act.shape      == (self.n_agents, self.act_size,))
-        assert(rew.shape      == (self.n_agents,))
-        assert(next_obs.shape == (self.n_agents, self.obs_size,))
-        assert(d.shape        == (self.n_agents,))
+        assert(obs[0].shape      == (self.n_agents, self.obs_space[0],))
+        assert(obs[1].shape      == (self.obs_space[-1],))
+        assert(act.shape         == (self.n_agents, self.act_space[0],))
+        assert(rew.shape         == (self.n_agents,))
+        assert(next_obs[0].shape == (self.n_agents, self.obs_space[0],))
+        assert(next_obs[1].shape == (self.obs_space[-1],))
+        assert(d.shape           == (self.n_agents,))
 
         # newly added element is first (0 index)
         self.buf.appendleft(trans)
@@ -74,10 +73,7 @@ class ReplayBuffer:
     #
     #  @param n Sample size
     #  @return Tuple of ndarrays: (obs, act, rew, next_obs, done)
-    def sample(self, n: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, \
-            np.ndarray, np.ndarray]:
+    def sample(self, n: int) -> List[Tuple[Tuple[np.ndarray, np.ndarray], np.ndarray, \
+            np.ndarray, Tuple[np.ndarray, np.ndarray], np.ndarray]]:
         indices = np.random.choice(len(self.buf), n, replace=False)
-        sample = zip(*[self.buf[idx] for idx in indices])
-
-        # return tuple of float arrays
-        return tuple([np.array(arr, dtype=np.float32) for arr in sample])
+        return [self.buf[idx] for idx in indices]

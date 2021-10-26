@@ -46,7 +46,7 @@ class TrainProcess:
 
             if (self.ep % self.c['eval_interval']) == 0:
                 self.__evaluation_episode()
-                self.logger.add_scalar('evaluation/training_ep_time', t1 - t0, self.ep)
+                self.logger.add_scalars('evaluation/training_time', {'training_ep_time': t1 - t0}, self.ep)
 
         self.model.save()
         self.logger.export_scalars_to_json(os.path.join(self.log_dir, 'summary.json'))
@@ -54,7 +54,7 @@ class TrainProcess:
 
 
     def __evaluation_episode(self) -> type(None):
-        log_actions      = np.empty((self.c['episode_length'], self.c['n_threads'], self.c['n_agents'], self.env.act_size))
+        log_actions      = np.empty((self.c['episode_length'], self.c['n_threads'], self.c['n_agents'], self.env.act_space[0]))
         log_rewards      = np.empty((self.c['episode_length'], self.c['n_threads'], self.c['n_agents']))
         log_reached_goal = np.empty((self.c['episode_length'], self.c['n_threads'], self.c['n_agents']))
         log_collision    = np.empty((self.c['episode_length'], self.c['n_threads'], self.c['n_agents']))
@@ -62,7 +62,7 @@ class TrainProcess:
         obs_v = self.env.reset()
 
         for step in range(self.c['episode_length']):
-            act_v = np.stack([self.model.step(obs, explore=False) for obs in obs_v])
+            act_v = np.stack([self.model.step(obs_v[0][i], explore=False) for i in range(self.c['n_threads'])])
 
             next_obs_v, rewards_v, infos_v, dones_v = self.env.step(
                 from_unit_actions(act_v, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
@@ -86,11 +86,11 @@ class TrainProcess:
         log_actions_lin  = log_actions[:, :, :, 0].flatten()
         log_actions_ang  = log_actions[:, :, :, 1].flatten()
 
-        self.logger.add_scalar('evaluation/reached_goal_average',   log_reached_goal, self.ep)
-        self.logger.add_scalar('evaluation/collision_average',      log_collision,    self.ep)
-        self.logger.add_scalar('evaluation/episode_reward_average', log_rewards,      self.ep)
-        self.logger.add_histogram('evaluation/linear_actions',      log_actions_lin,  self.ep)
-        self.logger.add_histogram('evaluation/angular_actions',     log_actions_ang,  self.ep)
+        self.logger.add_scalars('evaluation/reached_goal_average',   {'reached_goal_average':   log_reached_goal}, self.ep)
+        self.logger.add_scalars('evaluation/collision_average',      {'collision_average':      log_collision},    self.ep)
+        self.logger.add_scalars('evaluation/episode_reward_average', {'episode_reward_average': log_rewards},      self.ep)
+        self.logger.add_histogram('evaluation/linear_actions',           log_actions_lin,   self.ep)
+        self.logger.add_histogram('evaluation/angular_actions',          log_actions_ang,   self.ep)
 
 
     def __training_episode(self) -> type(None):
@@ -101,17 +101,19 @@ class TrainProcess:
         for step in range(self.c['episode_length']):
             if len(self.buffer) < self.c['buffer_length']:
                 # not learning yet, do fully random actions
-                act_v = self.rng.random(self.c['n_threads'] * self.c['n_agents'] * self.env.act_size)
-                act_v = act_v.reshape((self.c['n_threads'], self.c['n_agents'], self.env.act_size))
+                act_v = self.rng.random(self.c['n_threads'] * self.c['n_agents'] * self.env.get_action_space()[0])
+                act_v = act_v.reshape((self.c['n_threads'], self.c['n_agents'], self.env.get_action_space()[0]))
                 act_v = act_v * 2 - 1 # range=(-1, 1)
             else:
-                act_v = np.stack([self.model.step(obs, explore=True) for obs in obs_v])
+                act_v = np.stack([self.model.step(obs_v[0][i], explore=False) for i in range(self.c['n_threads'])])
 
             next_obs_v, rewards_v, infos_v, dones_v = self.env.step(
                 from_unit_actions(act_v, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
 
-            for obs, act, rewards, next_obs, dones in zip(obs_v, act_v, rewards_v, next_obs_v, dones_v):
-                self.buffer.push(obs, act, rewards, next_obs, dones)
+            for i in range(self.c['n_threads']):
+                obs      = (obs_v[0][i], obs_v[1][i])
+                next_obs = (next_obs_v[0][i], next_obs_v[1][i])
+                self.buffer.push(obs, act_v[i], rewards_v[i], next_obs, dones_v[i])
             obs_v = next_obs_v
 
             if (len(self.buffer) >= self.c['batch_size'] and
@@ -137,11 +139,11 @@ class TrainProcess:
             self.logger.add_scalars('loss/critic', {
                 'critic_1': losses['critic1'],
                 'critic_2': losses['critic2']}, self.ep)
-            self.logger.add_scalar('loss/policy', losses['policy'], self.ep)
+            self.logger.add_scalars('loss/policy', {'policy': losses['policy']}, self.ep)
 
             if self.c['auto_entropy']:
-                self.logger.add_scalar('loss/entropy', losses['entropy'], self.ep)
-                self.logger.add_scalar('evaluation/alpha', self.model.alpha, self.ep)
+                self.logger.add_scalars('loss/entropy',  {'entropy': losses['entropy']}, self.ep)
+                self.logger.add_scalars('evaluation/alpha', {'alpha': self.model.alpha}, self.ep)
 
 
 ## Runs multiple training sessions with different seeds
@@ -196,8 +198,8 @@ def train_MASAC(config: dict) -> type(None):
 
         model = MASAC(
             n_agents          = config['n_agents'],
-            obs_size          = env.obs_size,
-            act_size          = env.act_size,
+            obs_space         = env.get_observation_space(),
+            act_space         = env.get_action_space(),
             gamma             = config['gamma'],
             tau               = config['tau'],
             auto_entropy      = config['auto_entropy'],
@@ -209,8 +211,8 @@ def train_MASAC(config: dict) -> type(None):
         buffer = ReplayBuffer(
             length=config['buffer_length'],
             n_agents=config['n_agents'],
-            obs_size=env.obs_size,
-            act_size=env.act_size)
+            obs_space=env.get_observation_space(),
+            act_space=env.get_action_space())
 
         TrainProcess(env, model, buffer, logger, log_dir, config, rng)
 

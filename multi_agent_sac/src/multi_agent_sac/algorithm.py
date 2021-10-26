@@ -17,8 +17,8 @@ from typing import List, Tuple, Optional
 #
 class MASAC:
     ## @param n_agents Number of agents
-    #  @param obs_size Length of observation vector for one agent
-    #  @param act_size Length of action vector for one agent
+    #  @param obs_size Length of observations for the agents, and the global one as the last item
+    #  @param act_size Length of actions for the agents
     #  @param gamma Discount factor
     #  @param tau Target networks update rate
     #  @param alpha Entropy coefficient
@@ -28,8 +28,8 @@ class MASAC:
     #  @param logger Optional tensorboardX logger
     def __init__(self,
             n_agents: int,
-            obs_size: int,
-            act_size: int,
+            obs_space: List[int],
+            act_space: List[int],
             *,
             gamma: float,
             tau: float,
@@ -41,8 +41,8 @@ class MASAC:
             device: str):
 
         self.n_agents      = n_agents
-        self.obs_size      = obs_size
-        self.act_size      = act_size
+        self.obs_space     = obs_space
+        self.act_space     = act_space
         self.gamma         = gamma
         self.tau           = tau
         self.auto_entropy  = auto_entropy
@@ -51,13 +51,13 @@ class MASAC:
         self.model_dir     = model_dir
         self.device        = device
 
-        self.policy        = TanhGaussianPolicy(n_agents, obs_size, \
-            act_size, actor_hidden).to(self.device)
+        self.policy        = TanhGaussianPolicy(n_agents, self.obs_space[0], \
+            self.act_space[0], actor_hidden).to(self.device)
 
-        self.critic        = DoubleQNetwork(n_agents, obs_size, \
-            act_size, critic_hidden).to(self.device)
-        self.tgt_critic    = DoubleQNetwork(n_agents, obs_size, \
-            act_size, critic_hidden).to(self.device).eval()
+        self.critic        = DoubleQNetwork(n_agents, self.obs_space[-1], \
+            self.act_space[0], critic_hidden).to(self.device)
+        self.tgt_critic    = DoubleQNetwork(n_agents, self.obs_space[-1], \
+            self.act_space[0], critic_hidden).to(self.device).eval()
         hard_update(self.tgt_critic, self.critic)
         grad_false(self.tgt_critic)
 
@@ -67,7 +67,7 @@ class MASAC:
 
         if self.auto_entropy:
             self.target_entropy = \
-                -torch.tensor([self.n_agents * self.act_size], device=self.device).item()
+                -torch.tensor([self.n_agents * self.act_space[0]], device=self.device).item()
             self.log_alpha      = \
                 torch.zeros((1,), requires_grad=True, device=self.device)
             self.alpha          = self.log_alpha.exp()
@@ -84,11 +84,13 @@ class MASAC:
             torch.Tensor, torch.Tensor, torch.Tensor]) -> torch.Tensor:
 
         obs, act, rew, next_obs, d = sample
-        N = obs.shape[0] # sample size
+        obs_locs, obs_glob = obs
+        next_obs_locs, next_obs_glob = next_obs
+        N = obs_locs.shape[0] # sample size
 
-        sampled_act, entropy, _ = self.policy.sample(obs)
+        sampled_act, entropy, _ = self.policy.sample(obs_locs)
 
-        curr_q1, curr_q2 = self.critic(obs, sampled_act)
+        curr_q1, curr_q2 = self.critic(obs_glob, sampled_act)
         curr_q = torch.min(curr_q1, curr_q2)
 
         # we want to maximize this
@@ -104,15 +106,17 @@ class MASAC:
             torch.Tensor, torch.Tensor, torch.Tensor]) -> torch.Tensor:
 
         obs, act, rew, next_obs, d = sample
-        N = obs.shape[0] # sample size
+        obs_locs, obs_glob = obs
+        next_obs_locs, next_obs_glob = next_obs
+        N = obs_locs.shape[0] # sample size
 
         # get current eval
-        curr_q1, curr_q2 = self.critic(obs, act)
+        curr_q1, curr_q2 = self.critic(obs_glob, act)
 
         # calculate update target
         with torch.no_grad():
-            next_act, next_entropy, _ = self.policy.sample(next_obs)
-            next_q1, next_q2 = self.tgt_critic(next_obs, next_act)
+            next_act, next_entropy, _ = self.policy.sample(next_obs_locs)
+            next_q1, next_q2 = self.tgt_critic(next_obs_glob, next_act)
             next_q = torch.min(next_q1, next_q2)
 
         target_q = rew + self.gamma * (1. - d) * next_q
@@ -130,14 +134,28 @@ class MASAC:
 
     ## Update critic and policy based on the sampled batch
     #
-    #  @param sample tuple of np.ndarrays-s: (obs, act, rew, next_obs, d)
-    def update(self, sample: Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, \
-            np.ndarray]) -> type(None):
+    #  @param sample ((obs_locs, obs_glob), act, rew, (next_obs_locs, next_obs_glob), d)
+    def update(self, sample: List[Tuple[Tuple[np.ndarray, np.ndarray], np.ndarray, \
+            np.ndarray, Tuple[np.ndarray, np.ndarray], np.ndarray]]) -> type(None):
 
-        # convert to tensors
-        sample = tuple([torch.from_numpy(i.astype(np.float32)).to(self.device) \
-            for i in sample])
-        obs, act, rew, next_obs, d = sample
+        # convert to torch.Tensors
+        obs_locs      = np.stack([trans[0][0] for trans in sample]).astype(np.float32)
+        obs_glob      = np.stack([trans[0][1] for trans in sample]).astype(np.float32)
+        act           = np.stack([trans[1] for trans in sample]).astype(np.float32)
+        rew           = np.stack([trans[2] for trans in sample]).astype(np.float32)
+        next_obs_locs = np.stack([trans[3][0] for trans in sample]).astype(np.float32)
+        next_obs_glob = np.stack([trans[3][1] for trans in sample]).astype(np.float32)
+        d             = np.stack([trans[4] for trans in sample]).astype(np.float32)
+
+        obs_locs      = torch.from_numpy(obs_locs)
+        obs_glob      = torch.from_numpy(obs_glob)
+        act           = torch.from_numpy(act)
+        rew           = torch.from_numpy(rew)
+        next_obs_locs = torch.from_numpy(next_obs_locs)
+        next_obs_glob = torch.from_numpy(next_obs_glob)
+        d             = torch.from_numpy(d)
+
+        sample = ((obs_locs, obs_glob), act, rew, (next_obs_locs, next_obs_glob), d)
 
         # get losses and update
         q1_loss, q2_loss = self.__get_critic_loss(sample)
@@ -165,15 +183,15 @@ class MASAC:
 
     ## Get actions for the given observations (no target parameters)
     #
-    #  @param obs Observations, shape=(n_agents, obs_size)
+    #  @param obs Observations, local only
     #  @param explore Sample normal distribution (if True), or return mean
-    #  @return Array of actions for the given observations, shape=(n_agemts, act_size)
+    #  @return Array of actions for the given observations, shape=(n_agents, act_size)
     def step(self, obs: np.ndarray, *, explore: bool) -> np.ndarray:
 
-        assert(obs.shape == (self.n_agents, self.obs_size))
+        assert(obs.shape == (self.n_agents, self.obs_space[0]))
 
-        obs = torch.Tensor(obs).to(self.device).unsqueeze(0)
-        act_explore, entropy, act_det = self.policy.sample(obs)
+        obs_locs = torch.Tensor(obs).to(self.device).unsqueeze(0)
+        act_explore, entropy, act_det = self.policy.sample(obs_locs)
         if explore:
             act = act_explore
         else:

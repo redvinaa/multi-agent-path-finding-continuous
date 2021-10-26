@@ -57,28 +57,53 @@ class ParallelEnv:
             p.start()
 
         self.main_pipes[0].send(('get_spaces', None))
-        spaces = self.main_pipes[0].recv()
-        self.n_agents = len(spaces[0])
-        self.obs_size = spaces[0][0]
-        self.act_size = spaces[1][0]
+        self.obs_space, self.act_space = self.main_pipes[0].recv()
+        self.n_agents = len(self.act_space)
+
+    def get_observation_space(self):
+        return self.obs_space
+    def get_action_space(self):
+        return self.act_space
 
 
     def step(self, actions: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        assert(actions.shape == (self.n_threads, self.n_agents, self.act_size))
+        assert(actions.shape == (self.n_threads, self.n_agents, self.act_space[0]))
         for pipe, act in zip(self.main_pipes, actions):
             pipe.send(('step', act))
 
         results = [pipe.recv() for pipe in self.main_pipes]
-        obs, rew, info, d = zip(*results)
-        return np.stack(obs), np.stack(rew), np.stack(info), np.stack(d)
+
+        obs  = (np.empty((self.n_threads, self.n_agents, self.obs_space[0])),
+            np.empty((self.n_threads, self.obs_space[-1])))
+        rew  = np.empty((self.n_threads, self.n_agents))
+        info = np.empty((self.n_threads, self.n_agents), dtype=dict)
+        d    = np.empty((self.n_threads, self.n_agents))
+
+        for i in range(self.n_threads):
+            #  obs, rew, info, d = zip(*results)
+            obs[0][i] = results[i][0][:-1]
+            obs[1][i] = results[i][0][-1]
+            rew[i]    = results[i][1]
+            info[i]   = results[i][2]
+            d[i]      = results[i][3]
+
+        return (obs, rew, info, d)
 
 
     def reset(self) -> type(None):
         for pipe in self.main_pipes:
             pipe.send(('reset', None))
 
-        obs = [pipe.recv() for pipe in self.main_pipes]
-        return np.stack(obs)
+        results = [pipe.recv() for pipe in self.main_pipes]
+        obs  = (np.empty((self.n_threads, self.n_agents, self.obs_space[0])),
+            np.empty((self.n_threads, self.obs_space[-1])))
+
+        for i in range(self.n_threads):
+            #  obs, rew, info, d = zip(*results)
+            obs[0][i] = results[i][:-1]
+            obs[1][i] = results[i][-1]
+
+        return obs
 
 
     def __del__(self) -> type(None):

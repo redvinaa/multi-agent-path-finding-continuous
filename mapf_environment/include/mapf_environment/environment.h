@@ -44,7 +44,7 @@ class Environment
 
         // other fields
         std::vector<cv::Scalar> agent_colors;
-        std::vector<std::vector<float>> current_actions, laser_scans, last_observation;
+        std::vector<std::vector<float>> current_actions, laser_scans;
         std::vector<bool> collisions;
         std::vector<t_point> obstacle_positions;
         std::tuple<float, float> map_size;  // width, height
@@ -111,13 +111,13 @@ class Environment
         /*! \brief Step physics, calculate observations (incl. scans, collisions) and rewards
          *
          * First, the stored collisions are cleared.
-         *
          * Then, the internally stored linear and angular velocities are set.
          * Then, the physics simulation step is calculated (step_multiply times).
          * Finally, the observations are updated:
          *   - laser_scans
          *   - collisions,
          * along with the other parts of the observations.
+         * The last element of the observations vector is the global observation.
          *
          * Done is not set here, but in step(), which calls this function.
          *
@@ -142,11 +142,18 @@ class Environment
 
         /*! \brief Calculate the observations for the given agent
          *
-         * The observations contained in the vector are the following, respectively:
-         *   - agent_pose:                vector of linear x, y, and angle z
-         *   - direction to subgoal_pose: scalar
-         *   - distance to goal:          scalar, for the value function
-         *   - scan:                      vector of ranges
+         * Agent -1 returns the global observations
+         *
+         * The agent observations contained in the vector are the following, respectively:
+         *   - direction to subgoal_pose
+         *   - scan, vector of ranges
+         *   - other agents' rel pos
+         *   - other agents' velocity
+         *
+         * The global observations contained in the vector are the following, respectively:
+         *   - agent_poses, vector of linear x, y, and angle z
+         *   - directions to subgoal_pose
+         *   - distances to goal, for the absolute values
          *
          * Rewards are calculated based on the reached_goal argument.
          *
@@ -158,6 +165,12 @@ class Environment
         /*! \brief Gets the i-th point on the path of the agent
          *  as set in the variable carrot_planner_dist */
         t_point carrot_planner(const t_path route) const;
+
+        /*! \brief Get subgoal angle and distance
+         *
+         *  \return Tuple of angle to subgoal, and distance
+         */
+        std::tuple<float, float> get_subgoal(b2Vec2 start, b2Vec2 goal) const;
 
         FRIEND_TEST(EnvironmentCore,    constructorRuns);
         FRIEND_TEST(EnvironmentFixture, testConstructor);
@@ -223,13 +236,14 @@ class Environment
         /* \brief Add actions, get observations, rewards and dones
          *
          * Done is set here, if max_steps is reached.
+         * The last element of the observations vector is the global observation.
          * Based loosely on OpenAI Gym API
          *
          * \param actions vector of actions for every agens (size = no_agents * 2)
          * \param render If true, the env is rendered at every physics step, and waits
          * \return Tuple of vectors: (obs, reward, info, done)
          */
-        std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<std::unordered_map<std::string, float>>, std::vector<bool>>
+        std::tuple<std::vector<std::vector<float>>, std::vector<float>, std::vector<t_info>, std::vector<bool>>
             step(std::vector<std::vector<float>> actions, bool render = false);
 
         /*! \brief Is the episode over
