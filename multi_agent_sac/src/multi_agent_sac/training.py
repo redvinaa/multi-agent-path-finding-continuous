@@ -9,7 +9,7 @@ from algorithm import MASAC
 from buffer import ReplayBuffer
 from env_wrapper import ParallelEnv
 from mapf_env import Environment
-from misc import from_unit_actions, to_unit_actions
+from misc import from_unit_actions, to_unit_actions, LinearDecay
 from rospkg import RosPack
 import warnings
 import json
@@ -35,6 +35,14 @@ class TrainProcess:
         self.rng     = rng
 
         index = int(self.log_dir.split('/')[-2][-1])
+        self.coll_reward = LinearDecay(
+            self.c['collision_reward_start'],
+            self.c['collision_reward_end'],
+            self.c['collision_reward_decay_ep'])
+
+        self.env.goal_reaching_reward(self.c['goal_reaching_reward'])
+        self.env.goal_distance_reward_mult(self.c['goal_distance_reward_mult'])
+        self.env.collision_reward(self.coll_reward.val)
 
         for self.ep in tqdm(range(self.c['n_episodes'])):
             t0 = time.time()
@@ -47,6 +55,10 @@ class TrainProcess:
             if (self.ep % self.c['eval_interval']) == 0:
                 self.__evaluation_episode()
                 self.logger.add_scalars('evaluation/training_time', {'training_ep_time': t1 - t0}, self.ep)
+
+            self.logger.add_scalars('evaluation/collision_reward', {'collision_reward': self.coll_reward.val}, self.ep)
+            self.coll_reward.step()
+            self.env.collision_reward(self.coll_reward.val)
 
         self.model.save()
         self.logger.export_scalars_to_json(os.path.join(self.log_dir, 'summary.json'))

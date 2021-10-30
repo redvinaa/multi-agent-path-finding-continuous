@@ -51,8 +51,7 @@ class Environment
         std::vector<int> map_indices;
         bool draw_laser, draw_global_path, done;
         float block_size, scale_factor, laser_max_angle, laser_max_dist,
-            robot_diam, robot_radius, goal_reaching_reward, collision_reward,
-            goal_distance_reward_mult, episode_sim_time, obstacle_width,
+            robot_diam, robot_radius, episode_sim_time, obstacle_width,
             obstacle_height, safe_pix_width, safe_pix_height;
         std::string map_path;
         int render_height, render_width, laser_nrays, step_multiply, number_of_agents,
@@ -186,6 +185,8 @@ class Environment
         FRIEND_TEST(CriticFixture,      testTraining);
 
     public:
+        float goal_reaching_reward, goal_distance_reward_mult, collision_reward;
+
         /*! \brief Sets the default parameters, and calls init_map() and init_physics()
          *
          *  One step takes 0.5 s in sim time, and one ep is 30 s.

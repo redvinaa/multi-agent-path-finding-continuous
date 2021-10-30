@@ -37,5 +37,8 @@ PYBIND11_MODULE(mapf_env, m)
     .def("get_observation_space", &Environment::get_observation_space,
         "Return shape of observation space (nagents x obs_len)")
     .def("get_action_space", &Environment::get_action_space,
-        "Return shape of action space (nagents x act_len)");
+        "Return shape of action space (nagents x act_len)")
+    .def_readwrite("goal_reaching_reward", &Environment::goal_reaching_reward)
+    .def_readwrite("goal_distance_reward_mult", &Environment::goal_distance_reward_mult)
+    .def_readwrite("collision_reward", &Environment::collision_reward);
 }

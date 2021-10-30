@@ -34,6 +34,12 @@ class ParallelEnv:
                 break
             elif cmd == 'get_spaces':
                 pipe.send((env.get_observation_space(), env.get_action_space()))
+            elif cmd == 'goal_reaching_reward':
+                env.goal_reaching_reward = data
+            elif cmd == 'goal_distance_reward_mult':
+                env.goal_distance_reward_mult = data
+            elif cmd == 'collision_reward':
+                env.collision_reward = data
             else:
                 raise NotImplementedError
 
@@ -104,6 +110,19 @@ class ParallelEnv:
             obs[1][i] = results[i][-1]
 
         return obs
+
+
+    def goal_reaching_reward(self, value):
+        for pipe in self.main_pipes:
+            pipe.send(('goal_reaching_reward', value))
+
+    def goal_distance_reward_mult(self, value):
+        for pipe in self.main_pipes:
+            pipe.send(('goal_distance_reward_mult', value))
+
+    def collision_reward(self, value):
+        for pipe in self.main_pipes:
+            pipe.send(('collision_reward', value))
 
 
     def __del__(self) -> type(None):

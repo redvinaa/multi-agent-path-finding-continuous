@@ -20,4 +20,9 @@ auto_entropy: true
 min_linear_speed: 0.
 max_linear_speed: 2.
 max_angular_speed: 3.14
+goal_reaching_reward: 1.
+goal_distance_reward_mult: -0.5
+collision_reward_start: 0.
+collision_reward_end: -1.
+collision_reward_decay_ep: 4000
 device: cpu
