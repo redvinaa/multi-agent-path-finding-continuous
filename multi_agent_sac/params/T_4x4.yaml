@@ -5,7 +5,7 @@ map_size: [4, 4]
 robot_diam: 0.7
 buffer_length: 10000
 batch_size: 1000
-n_episodes: 10000
+n_episodes: 30000
 n_agents: 2
 episode_length: 60
 steps_per_update: 1
@@ -18,6 +18,11 @@ tau: 0.99
 gamma: 0.95
 auto_entropy: true
 min_linear_speed: 0.
-max_linear_speed: 2.
-max_angular_speed: 3.14
+max_linear_speed: 1.
+max_angular_speed: 1.
+goal_reaching_reward: 1.
+goal_distance_reward_mult: -0.5
+collision_reward_start: 0.
+collision_reward_end: -0.7
+collision_reward_decay_ep: 15000
 device: cpu
