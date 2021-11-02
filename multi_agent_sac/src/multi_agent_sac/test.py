@@ -6,7 +6,7 @@ import os
 import numpy as np
 from multi_agent_sac.algorithm import MASAC
 from multi_agent_sac.misc import from_unit_actions
-from mapf_env import Environment
+from multi_agent_sac.env_wrapper import ParallelEnv
 from rospkg import RosPack
 import json
 
@@ -32,15 +32,9 @@ class TestMASACRos:
         # create env
         maps_dir_path = os.path.join(RosPack().get_path('mapf_environment'), 'maps')
         image = os.path.join(maps_dir_path, self.c['map_image'] + '.jpg')
-        self.env = Environment(
-            map_path          = image,
-            map_size          = tuple(self.c['map_size']),
-            number_of_agents  = self.c['n_agents'],
-            seed              = self.c['seed'],
-            robot_diam        = self.c['robot_diam'],
-            physics_step_size = 0.1,
-            step_multiply     = 1,
-            max_steps         = 99999)
+        self.c.update({'n_threads': 1, 'map_image': image})
+
+        self.env = ParallelEnv(self.c, np.random.default_rng())
 
         # create model, load weights
         device = torch.device('cuda' if self.c['device']=='cuda' and
@@ -48,8 +42,8 @@ class TestMASACRos:
 
         self.model = MASAC(  # most of these are not used
             n_agents          = self.c['n_agents'],
-            obs_size          = self.env.get_observation_space()[0],
-            act_size          = self.env.get_action_space()[0],
+            obs_space         = self.env.get_observation_space(),
+            act_space         = self.env.get_action_space(),
             gamma             = self.c['gamma'],
             tau               = self.c['tau'],
             auto_entropy      = self.c['auto_entropy'],
@@ -61,26 +55,27 @@ class TestMASACRos:
         self.model.load()
 
     def run(self) -> type(None):
-        done = False
         obs  = self.env.reset()
-        obs  = np.array(obs)
 
-        while not done:
+        while True:
             # get actions
-            act = self.model.step(obs, explore=False)
+            act = np.stack([self.model.step(o, explore=False) for o in obs[0]])
 
             # render
-            self.env.render(100, False)
+            self.env.render(500, False)
 
             # step
-            obs, rew, info, dones = self.env.step(from_unit_actions(act, self.c['min_linear_speed'], self.c['max_linear_speed'], self.c['max_angular_speed']))
-            obs = np.array(obs)
-            done = np.any(dones)
+            obs, _, _, _ = \
+                self.env.step(
+                from_unit_actions(act, \
+                self.c['min_linear_speed'],
+                self.c['max_linear_speed'], \
+                self.c['max_angular_speed']))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('run_name',  default='test', nargs='?', type=str,
+    parser.add_argument('run_name',  default='empty_4x4', nargs='?', type=str,
         help='Name of the run to load')
     parser.add_argument('run_index', default=0,      nargs='?', type=int,
         help='Index of the run to load')

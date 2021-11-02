@@ -32,6 +32,8 @@ class ParallelEnv:
             elif cmd == 'close':
                 pipe.close()
                 break
+            elif cmd == 'render':
+                env.render(*data)
             elif cmd == 'get_spaces':
                 pipe.send((env.get_observation_space(), env.get_action_space()))
             elif cmd == 'goal_reaching_reward':
@@ -110,6 +112,11 @@ class ParallelEnv:
             obs[1][i] = results[i][-1]
 
         return obs
+
+
+    def render(self, wait, debug):
+        for pipe in self.main_pipes:
+            pipe.send(('render', (wait, debug)))
 
 
     def goal_reaching_reward(self, value):
