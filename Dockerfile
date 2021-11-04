@@ -1,34 +1,30 @@
 FROM ros:melodic
 
 # install build tools
-RUN apt-get update && apt-get install -y \
-      python-catkin-tools \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update
+RUN apt-get install -y  python-catkin-tools libeigen3-dev
+RUN apt-get install -y  ros-melodic-image-transport ros-melodic-cv-bridge ros-melodic-pybind11-catkin
+RUN rm -rf /var/lib/apt/lists/*
+
+# install box2d
+RUN git -C / clone https://github.com/erincatto/box2d.git
+RUN mkdir -p /box2d/build
+WORKDIR /box2d/build
+RUN cmake ..
+RUN make install
+
 
 # clone ros package repo
 ENV ROS_WS /opt/ros_ws
-RUN mkdir -p $ROS_WS/src
 WORKDIR $ROS_WS
-RUN git -C src clone \
-      -b main \
-      https://github.com/redvinaa/multi-agent-path-finding-continuous.git
-
-RUN apt-get install ros-$ROS_DISTRO-ros-lint
-
-# install ros package dependencies
-# RUN apt-get update && \
-#     rosdep update && \
-#     rosdep install -y \
-#       --from-paths \
-#         src/multi-agent-path-finding-continuous \
-#       --ignore-src && \
-#     rm -rf /var/lib/apt/lists/*
+RUN mkdir -p $ROS_WS/src
+COPY . src
 
 # build ros package source
 RUN catkin config \
       --extend /opt/ros/$ROS_DISTRO && \
     catkin build \
-      multi_agent_sac
+      mapf_environment
 
 # source ros package from entrypoint
 RUN sed --in-place --expression \
