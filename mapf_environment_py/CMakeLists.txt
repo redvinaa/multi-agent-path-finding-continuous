@@ -5,14 +5,13 @@ set(PYTHON_EXECUTABLE "/usr/bin/python3.6")
 
 find_package(catkin REQUIRED COMPONENTS
     pybind11_catkin
-    roslint
     mapf_environment
 )
 
 include_directories(${catkin_INCLUDE_DIRS})
 
 catkin_package(
- CATKIN_DEPENDS pybind11_catkin roslint mapf_environment
+ CATKIN_DEPENDS pybind11_catkin mapf_environment
 )
 
 pybind_add_module(mapf_env MODULE src/python_wrapper.cpp)
@@ -25,7 +24,3 @@ install(TARGETS mapf_env
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
 )
-
-# test runs, but catkin uses python2.7 so this does not work
-roslint_python()
-roslint_add_test()
