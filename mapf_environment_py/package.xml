@@ -10,7 +10,6 @@
   <doc_depend>doxygen</doc_depend>
   <buildtool_depend>catkin</buildtool_depend>
   <test_depend>rosunit</test_depend>
-  <depend>roslint</depend>
   <depend>pybind11_catkin</depend>
   <depend>mapf_environment</depend>
 

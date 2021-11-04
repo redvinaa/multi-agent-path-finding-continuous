@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 14)
 
 find_package(catkin REQUIRED COMPONENTS
   roslib
-  roslint
   roscpp
   geometry_msgs
   image_transport
@@ -26,7 +25,7 @@ include_directories(
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES ${PROJECT_NAME}_lib
- CATKIN_DEPENDS roslib roslint roscpp geometry_msgs image_transport cv_bridge
+ CATKIN_DEPENDS roslib roscpp geometry_msgs image_transport cv_bridge
  DEPENDS box2d OpenCV
 )
 
@@ -57,8 +56,3 @@ install(DIRECTORY include/${PROJECT_NAME}/
 # testing
 catkin_add_gtest(${PROJECT_NAME}-test test/test_environment.cpp)
 target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME}_lib ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES})
-
-# linting
-roslint_cpp()
-roslint_python()
-roslint_add_test()

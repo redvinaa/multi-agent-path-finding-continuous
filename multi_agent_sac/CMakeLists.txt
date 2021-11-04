@@ -4,7 +4,6 @@ project(multi_agent_sac)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roslib
-  roslint
   rospy
   std_msgs
 )
@@ -12,9 +11,5 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_python_setup()
 
 catkin_package(
- CATKIN_DEPENDS geometry_msgs roslib roslint rospy std_msgs
+ CATKIN_DEPENDS geometry_msgs roslib rospy std_msgs
 )
-
-# linting
-# roslint_python()
-# roslint_add_test()
