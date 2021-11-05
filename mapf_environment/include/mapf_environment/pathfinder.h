@@ -4,7 +4,7 @@
 #define MAPF_ENVIRONMENT_PATHFINDER_H
 
 #include <opencv2/opencv.hpp>
-#include <eigen3/unsupported/Eigen/CXX11/Tensor>
+#include <Eigen/CXX11/Tensor>
 
 
 /*! \brief 2d tensor of path indices */

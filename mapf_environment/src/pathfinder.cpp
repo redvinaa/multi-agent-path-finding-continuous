@@ -1,7 +1,7 @@
 // Copyright 2021 Reda Vince
 
 #include "mapf_environment/pathfinder.h"
-#include <eigen3/unsupported/Eigen/CXX11/Tensor>
+#include <Eigen/CXX11/Tensor>
 #include <opencv2/opencv.hpp>
 #include <chrono>
 #include <vector>
