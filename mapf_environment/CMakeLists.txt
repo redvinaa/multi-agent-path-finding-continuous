@@ -11,14 +11,16 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
 )
 
-find_package(OpenCV 3.2 REQUIRED)
 find_package(box2d REQUIRED)
+find_package(OpenCV 3.2 REQUIRED)
 
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${box2d_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
+  /usr/local/include/eigen3
+  /usr/local/include/eigen3/unsupported
 )
 
 
