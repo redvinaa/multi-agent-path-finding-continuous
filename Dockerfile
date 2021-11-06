@@ -29,8 +29,8 @@ WORKDIR /
 # clone this repo into new ros workspace
 ENV ROS_WS /opt/ros_ws
 WORKDIR $ROS_WS
-RUN mkdir -p $ROS_WS/src
-COPY . src
+RUN mkdir -p $ROS_WS/src/multi-agent-path-finding-continuous/
+COPY . src/multi-agent-path-finding-continuous/
 
 # build ros packages
 RUN catkin config --extend /opt/ros/$ROS_DISTRO && catkin build
@@ -42,9 +42,6 @@ ENV PYTHONPATH $PYTHONPATH:/opt/ros_ws/src/multi-agent-path-finding-continuous
 RUN sed --in-place --expression \
       '$isource "$ROS_WS/devel/setup.bash"' \
       /ros_entrypoint.sh
-
-# expose port 6006 for tensorboard
-EXPOSE 6006
 
 # run ros package launch file
 CMD ["/bin/bash"]
