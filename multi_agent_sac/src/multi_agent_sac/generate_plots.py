@@ -8,6 +8,7 @@ from glob import glob
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import Union, List
+import yaml
 
 
 if __name__ == '__main__':
@@ -15,12 +16,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('run_name', default='empty_4x4', nargs='?', type=str,
         help='Name of the configuration to be loaded')
+    parser.add_argument('-s', '--show', action='store_true')
 
     args = parser.parse_args()
 
     pkg_path    = RosPack().get_path('multi_agent_sac')
     run_dir     = os.path.join(pkg_path, 'runs', args.run_name)
 
+    # load config
+    with open(os.path.join(pkg_path, 'params', args.run_name+'.yaml')) as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    # load training data
     summaries = []
     for run in glob(os.path.join(run_dir, 'run_*')):
         summary_f = os.path.join(run, 'logs', 'summary.json')
@@ -72,7 +79,8 @@ if __name__ == '__main__':
         ax.fill_between(ep, np.min(vals, axis=0), np.max(vals, axis=0), alpha=.2)
         if log_scale:
             ax.set_yscale('log')
-        plt.plot(ep, avg)
+        plt.plot(ep*config['n_threads']/1000, avg)
+        plt.xlabel('1000 episodes')
         plt.tight_layout()
 
         if save:
@@ -92,9 +100,9 @@ if __name__ == '__main__':
             fig.canvas.set_window_title(n)
             plt.show()
 
-    draw_plot('evaluation/episode_reward_average/episode_reward_average')
-    draw_plot('evaluation/collision_average/collision_average')
-    draw_plot('evaluation/reached_goal_average/reached_goal_average')
-    draw_plot(['loss/critic/critic_1', 'loss/critic/critic_2'])
-    draw_plot('loss/entropy/entropy')
-    draw_plot('loss/policy/policy')
+    draw_plot('evaluation/episode_reward_average/episode_reward_average', show=args.show)
+    draw_plot('evaluation/collision_average/collision_average', show=args.show)
+    draw_plot('evaluation/reached_goal_average/reached_goal_average', show=args.show)
+    draw_plot(['loss/critic/critic_1', 'loss/critic/critic_2'], show=args.show)
+    draw_plot('loss/entropy/entropy', show=args.show)
+    draw_plot('loss/policy/policy', show=args.show)
