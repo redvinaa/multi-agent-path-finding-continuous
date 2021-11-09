@@ -67,7 +67,7 @@ class MASAC:
 
         if self.auto_entropy:
             self.target_entropy = \
-                -torch.tensor([self.n_agents * self.act_space[0]], device=self.device).item()
+                -torch.tensor([self.act_space[0]], device=self.device).item()
             self.log_alpha      = \
                 torch.zeros((1,), requires_grad=True, device=self.device)
             self.alpha          = self.log_alpha.exp()
