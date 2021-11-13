@@ -115,7 +115,7 @@ class MASAC:
 
         # calculate update target
         with torch.no_grad():
-            next_act, next_entropy, _ = self.policy.sample(next_obs_locs)
+            next_act, _, _ = self.policy.sample(next_obs_locs)
             next_q1, next_q2 = self.tgt_critic(next_obs_glob, next_act)
             next_q = torch.min(next_q1, next_q2)
 

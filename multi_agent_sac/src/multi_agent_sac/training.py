@@ -38,7 +38,8 @@ class TrainProcess:
         self.coll_reward = LinearDecay(
             self.c['collision_reward_start'],
             self.c['collision_reward_end'],
-            self.c['collision_reward_decay_ep'])
+            self.c['collision_reward_decay_ep_start'],
+            self.c['collision_reward_decay_ep_end'])
 
         self.env.goal_reaching_reward(self.c['goal_reaching_reward'])
         self.env.goal_distance_reward_mult(self.c['goal_distance_reward_mult'])
@@ -86,7 +87,7 @@ class TrainProcess:
             log_reached_goal[step] = np.array([[i['reached_goal'] for i in info] for info in infos_v])
             log_collision[step]    = np.array([[i['collision']    for i in info] for info in infos_v])
 
-        log_rewards      = np.average(log_rewards,      axis=0)
+        log_rewards      = np.sum(log_rewards,          axis=0)
         log_rewards      = np.average(log_rewards,      axis=0)
         log_rewards      = np.average(log_rewards,      axis=0)
         log_reached_goal = np.sum(log_reached_goal,     axis=0)

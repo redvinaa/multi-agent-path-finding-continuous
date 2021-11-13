@@ -71,31 +71,28 @@ def to_unit_actions(act: np.ndarray, min_linear_speed: float, max_linear_speed: 
 
     return act
 
-## Linear decay function
-#
-#  Value starts at start value and linearly decays to end value
-#  in the span of max_steps. If max_steps <= 0, value is always
-#  the end value.
+## Linear decay function, constant before step_start and after step_end
 class LinearDecay:
-    def __init__(self, start, end, max_steps):
+    def __init__(self, start: float, end: float, step_start: int, step_end: int):
         self.start = start
         self.end = end
-        self.max_steps = max_steps
+        self.step_start = step_start
+        self.step_end = step_end
         self.curr_steps = 0
 
-        if max_steps > 0:
-            self.delta = (start - end) / max_steps
-            self.val = start
+        assert(step_end > step_start)
+        self.val = start
+        self.slope = (end - start) / (step_end - step_start)
+
+    def step(self) -> type(None):
+        if self.curr_steps < self.step_start:
+            self.val = self.start
+        elif self.curr_steps > self.step_end:
+            self.val = self.end
         else:
-            self.val = end
+            self.val = self.start + self.slope * (self.curr_steps - self.step_start)
 
-    def step(self):
-        if self.max_steps > 0:
-            if self.start > self.end:
-                self.val = max(self.val - self.delta, self.end)
-            else:
-                self.val = min(self.val - self.delta, self.end)
+        self.curr_steps += 1
 
-    def __call__(self):
-        # if max_steps <= 0, self.val is always = end
+    def __call__(self) -> float:
         return self.val

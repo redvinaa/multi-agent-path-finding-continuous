@@ -17,6 +17,8 @@ if __name__ == '__main__':
     parser.add_argument('run_name', default='empty_4x4', nargs='?', type=str,
         help='Name of the configuration to be loaded')
     parser.add_argument('-s', '--show', action='store_true')
+    parser.add_argument('-c', '--color', default='tab:blue', type=str,
+        help='Color of the plots')
 
     args = parser.parse_args()
 
@@ -51,13 +53,15 @@ if __name__ == '__main__':
             new_k = k.split('/logs/')[1]
             summary[new_k] = summary.pop(k)
 
+    plt.rcParams.update({'font.size': 22})
+
     ## Calculate, show and save plot for a given value
     #
     #  @param name Name or list of names for the plotted values
     #  @param save Save the figure to runs/<run_name>/figures/<name>.png
     #  @param log_scale Use log scale when plotting
     def draw_plot(name: Union[str, List[str]], *,
-            show: bool=True, save: bool=True, log_scale: bool=False) -> type(None):
+            log_scale: bool=False) -> type(None):
         data = []
 
         for summary in summaries:
@@ -70,28 +74,31 @@ if __name__ == '__main__':
                     data.append(run_data)
 
         data = np.array(data)
-        ep   = data[0, :, 1]
+        ep   = data[0, :, 1]*config['n_threads']/1000
         vals = data[:, :, 2]
         avg  = np.average(data[:, :, 2], axis=0)
 
         plt.grid()
         ax = plt.gca()
-        ax.fill_between(ep, np.min(vals, axis=0), np.max(vals, axis=0), alpha=.2)
+        ax.fill_between(ep, np.min(vals, axis=0), np.max(vals, axis=0), alpha=.2, color=args.color)
         if log_scale:
             ax.set_yscale('log')
-        plt.plot(ep*config['n_threads']/1000, avg)
+        plt.plot(ep, avg, color=args.color)
+        y_range = np.max(avg) - np.min(avg)
+        y_top = np.max(avg) + y_range*0.2
+        y_bot = np.min(avg) - y_range*0.2
+        plt.ylim(bottom=y_bot, top=y_top)
         plt.xlabel('1000 episodes')
         plt.tight_layout()
 
-        if save:
-            os.makedirs(os.path.join(run_dir, 'figures'), exist_ok=True)
-            if type(name) == str:
-                n = name
-            else:
-                n = name[0]
-            plt.savefig(os.path.join(run_dir, 'figures', n.replace('/', '_')))
+        os.makedirs(os.path.join(run_dir, 'figures'), exist_ok=True)
+        if type(name) == str:
+            n = name
+        else:
+            n = name[0]
+        plt.savefig(os.path.join(run_dir, 'figures', n.replace('/', '_')))
 
-        if show:
+        if args.show:
             fig = plt.gcf()
             if type(name) == str:
                 n = name
@@ -100,9 +107,11 @@ if __name__ == '__main__':
             fig.canvas.set_window_title(n)
             plt.show()
 
-    draw_plot('evaluation/episode_reward_average/episode_reward_average', show=args.show)
-    draw_plot('evaluation/collision_average/collision_average', show=args.show)
-    draw_plot('evaluation/reached_goal_average/reached_goal_average', show=args.show)
-    draw_plot(['loss/critic/critic_1', 'loss/critic/critic_2'], show=args.show)
-    draw_plot('loss/entropy/entropy', show=args.show)
-    draw_plot('loss/policy/policy', show=args.show)
+    draw_plot('evaluation/episode_reward_average/episode_reward_average')
+    draw_plot('evaluation/collision_average/collision_average')
+    draw_plot('evaluation/reached_goal_average/reached_goal_average')
+    draw_plot(['loss/critic/critic_1', 'loss/critic/critic_2'])
+    draw_plot('loss/entropy/entropy')
+    draw_plot('loss/policy/policy')
+    draw_plot('evaluation/collision_reward/collision_reward')
+    draw_plot('evaluation/alpha/alpha', log_scale=True)
