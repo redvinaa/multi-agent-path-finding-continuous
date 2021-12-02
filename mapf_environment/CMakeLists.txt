@@ -53,8 +53,3 @@ install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
 )
-
-
-# testing
-catkin_add_gtest(${PROJECT_NAME}-test test/test_environment.cpp)
-target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME}_lib ${catkin_LIBRARIES} box2d ${OpenCV_LIBRARIES})
